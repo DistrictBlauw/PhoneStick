@@ -1,31 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <licenses xmlns:android="http://schemas.android.com/apk/res/android">
     <license
-        name="phonestick"
-        type="MIT"
+        name="PhoneStick"
+        type="MIT License"
         file="phonestick.txt"
-        url="https://github.com/JinbaIttai/phonestick" />
+        url="https://github.com/mingww64/PhoneStick" />
     <license
-        name="USB Mountr"
-        type="MIT"
+        name="Swyter / phonestick"
+        type="MIT License"
+        file="phonestick.txt"
+        url="https://github.com/Swyter/phonestick" />
+    <license
+        name="USB Mountr (streetwalrus)"
+        type="MIT License"
         file="usbmountr.txt"
         url="https://github.com/Streetwalrus/android_usb_msd" />
-
     <license
-        name="aFileChooser (parts)"
+        name="TopJohnWu / libsu"
         type="Apache 2.0"
-        file="afilechooser.txt"
-        url="https://github.com/iPaulPro/aFileChooser" />
-
+        file="libsu.txt"
+        url="https://github.com/topjohnwu/libsu" />
+    <license
+        name="Material Design 3 Components"
+        type="Apache 2.0"
+        file="material.txt"
+        url="https://github.com/material-components/material-components-android" />
     <license
         name="Kotlin"
         type="Apache 2.0"
         file="kotlin.txt"
         url="https://github.com/jetbrains/kotlin" />
-
-    <license
-        name="libsuperuser"
-        type="Apache 2.0"
-        file="libsuperuser.txt"
-        url="https://github.com/Chainfire/libsuperuser" />
 </licenses>

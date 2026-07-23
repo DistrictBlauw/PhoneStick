@@ -1,30 +1,40 @@
 <resources>
-    <string name="app_name">phonestick</string>
+    <string name="app_name">PhoneStick</string>
 
     <string name="licenses">Licenses</string>
     <string name="licenses_upstream">Upstream source</string>
 
-    <string name="file_picker_nofile">None</string>
+    <string name="file_picker_nofile">No image selected</string>
 
     <!-- MainActivity -->
-    <string name="host_source_file">Image file</string>
-    <string name="host_ro">Read-only</string>
-    <string name="host_ro_summary">Prevent the PC from writing to the image</string>
-    <string name="host_serve">Mount</string>
-    <string name="host_disable">Unmount</string>
-    <string name="host_help">This application will try to coexist with Android\'s USB services,
-        but the system is very likely to override its effects at any moment.
-    </string>
+    <string name="status_title">USB Mass Storage Status</string>
+    <string name="status_mounted">MOUNTED</string>
+    <string name="status_unmounted">UNMOUNTED</string>
+    <string name="status_lun_path">LUN: %1$s</string>
+    <string name="host_source_file">Selected Image</string>
+    <string name="host_ro">Read-only mode</string>
+    <string name="host_ro_summary">Prevent host PC from modifying the disk image</string>
+    <string name="host_cdrom">CD-ROM emulation</string>
+    <string name="host_cdrom_summary">Emulate a virtual CD-ROM drive</string>
+    <string name="host_serve">Mount USB Drive</string>
+    <string name="host_disable">Unmount USB Drive</string>
+    <string name="btn_select_image">Choose Image</string>
+    <string name="btn_create_image">Create Blank Disk Image</string>
+    <string name="host_help">PhoneStick emulates a USB mass storage drive or virtual CD-ROM. Ensure root permission is granted and a compatible kernel is available.</string>
 
-    <!-- ImageChooserActivity -->
-    <string name="title_activity_image_chooser">Image files</string>
+    <!-- ImageChooserActivity & Dialogs -->
+    <string name="title_activity_image_chooser">Select or Create Disk Image</string>
     <string name="image_chooser_filesize_mib">%1$.1f MiB</string>
-    <string name="image_chooser_add">Add new image</string>
-    <string name="image_chooser_copying_dialog">Copying image file</string>
+    <string name="image_chooser_add">Import Image</string>
+    <string name="create_image_dialog_title">Create Blank Disk Image</string>
+    <string name="create_image_name_hint">Image Name (e.g. boot.img)</string>
+    <string name="create_image_size_hint">Size in MB (e.g. 512, 1024, 4096)</string>
+    <string name="create_image_confirm">Create Image</string>
+    <string name="cancel">Cancel</string>
 
     <!-- Toast messages -->
     <string name="host_success">The device should now show up on your PC</string>
     <string name="host_disable_success">The device should now disappear from your PC</string>
     <string name="host_noroot">Couldn\'t get root access</string>
-    <string name="file_picker_denied">Please grant access to storage to access this file</string>
+    <string name="file_picker_denied">Please grant storage permission to select or save files</string>
 </resources>

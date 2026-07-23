@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light Mode Theme Colors -->
+    <color name="md_theme_primary">#006495</color>
+    <color name="md_theme_onPrimary">#FFFFFF</color>
+    <color name="md_theme_primaryContainer">#CBE6FF</color>
+    <color name="md_theme_onPrimaryContainer">#001E30</color>
+    <color name="md_theme_secondary">#50606E</color>
+    <color name="md_theme_onSecondary">#FFFFFF</color>
+    <color name="md_theme_surface">#FAFDFD</color>
+    <color name="md_theme_onSurface">#191C1E</color>
+    <color name="md_theme_surfaceVariant">#DEE3EA</color>
+    <color name="md_theme_onSurfaceVariant">#41474D</color>
+    <color name="status_mounted">#2E7D32</color>
+    <color name="status_unmounted">#C62828</color>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark Mode Theme Colors -->
+    <color name="md_theme_primary">#8ECDFF</color>
+    <color name="md_theme_onPrimary">#003452</color>
+    <color name="md_theme_primaryContainer">#004B73</color>
+    <color name="md_theme_onPrimaryContainer">#CBE6FF</color>
+    <color name="md_theme_secondary">#B7C8D8</color>
+    <color name="md_theme_onSecondary">#22323F</color>
+    <color name="md_theme_surface">#111315</color>
+    <color name="md_theme_onSurface">#E2E2E5</color>
+    <color name="md_theme_surfaceVariant">#23272D</color>
+    <color name="md_theme_onSurfaceVariant">#C3C7CE</color>
+    <color name="status_mounted">#81C784</color>
+    <color name="status_unmounted">#E57373</color>
+</resources>

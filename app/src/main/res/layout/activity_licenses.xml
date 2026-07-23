@@ -5,10 +5,13 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="streetwalrus.usbmountr.LicenseActivity">
+    tools:context=".LicenseActivity">
 
-    <ListView
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@android:id/list" />
+        android:padding="8dp"
+        android:clipToPadding="false" />
+
 </LinearLayout>
