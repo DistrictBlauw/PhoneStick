@@ -28,9 +28,17 @@ class ImageChooserActivity : AppCompatActivity() {
     private var currentlySelectedPath: String = ""
 
     private val importFileLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
+        ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
+            try {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: Exception) {
+                // Ignore if not persistable
+            }
             handleImportedUri(uri)
         }
     }
@@ -60,7 +68,16 @@ class ImageChooserActivity : AppCompatActivity() {
 
         binding.fabImportImage.setOnClickListener {
             toggleSpeedDial()
-            importFileLauncher.launch("*/*")
+            val mimeTypes = arrayOf(
+                "application/octet-stream",
+                "application/x-iso9660-image",
+                "application/x-raw-disk-image",
+                "application/x-cd-image",
+                "application/vnd.iso",
+                "application/x-vhd",
+                "application/x-qemu-disk"
+            )
+            importFileLauncher.launch(mimeTypes)
         }
 
         binding.fabCreateImage.setOnClickListener {
@@ -187,19 +204,40 @@ class ImageChooserActivity : AppCompatActivity() {
     }
 
     private fun loadImages() {
-        val internalFiles = filesDir.listFiles { file ->
-            file.isFile && isValidImageExtension(file.extension)
-        }?.toList() ?: emptyList()
+        lifecycleScope.launch(Dispatchers.IO) {
+            val internalFiles = filesDir.listFiles { file ->
+                file.isFile && isValidImageExtension(file.extension)
+            }?.toList() ?: emptyList()
 
-        val externalPaths = getExternalImagePaths()
-        val externalFiles = externalPaths.map { File(it) }.filter { it.exists() && it.isFile && it.length() > 0 }
+            val externalPaths = getExternalImagePaths()
+            val validExternalPaths = mutableListOf<String>()
 
-        val combined = (internalFiles + externalFiles).distinctBy { it.absolutePath }
+            if (externalPaths.isNotEmpty()) {
+                val script = externalPaths.map { path ->
+                    val escaped = path.replace("'", "'\\''")
+                    "if [ -f '$escaped' ] && [ -s '$escaped' ]; then echo \"VALID:$path\"; fi"
+                }.toTypedArray()
 
-        imageFiles.clear()
-        imageFiles.addAll(combined)
-        if (::adapter.isInitialized) {
-            adapter.notifyDataSetChanged()
+                val res = com.topjohnwu.superuser.Shell.cmd(*script).exec()
+                if (res.isSuccess) {
+                    for (line in res.out) {
+                        if (line.startsWith("VALID:")) {
+                            validExternalPaths.add(line.substring(6))
+                        }
+                    }
+                }
+            }
+
+            val externalFiles = validExternalPaths.map { File(it) }.filter { isValidImageExtension(it.extension) }
+            val combined = (internalFiles + externalFiles).distinctBy { it.absolutePath }
+
+            withContext(Dispatchers.Main) {
+                imageFiles.clear()
+                imageFiles.addAll(combined)
+                if (::adapter.isInitialized) {
+                    adapter.notifyDataSetChanged()
+                }
+            }
         }
     }
 
@@ -207,21 +245,42 @@ class ImageChooserActivity : AppCompatActivity() {
         setLoading(true)
         lifecycleScope.launch(Dispatchers.IO) {
             val resolvedPath = UriPathResolver.getRealPathFromUri(this@ImageChooserActivity, uri)
-            val file = if (resolvedPath.isNotEmpty()) File(resolvedPath) else null
 
-            val isValid = file != null && file.exists() && file.isFile && file.length() > 0 && file.canRead()
+            var exists = false
+            var isFile = false
+            var length = 0L
+
+            if (resolvedPath.isNotEmpty()) {
+                val escapedPath = resolvedPath.replace("'", "'\\''")
+                val res = com.topjohnwu.superuser.Shell.cmd(
+                    "if [ -e '$escapedPath' ]; then echo EXISTS; fi",
+                    "if [ -f '$escapedPath' ]; then echo IS_FILE; fi",
+                    "stat -c %s '$escapedPath' 2>/dev/null || echo 0"
+                ).exec()
+
+                val out = res.out
+                exists = out.contains("EXISTS")
+                isFile = out.contains("IS_FILE")
+                length = out.lastOrNull()?.toLongOrNull() ?: 0L
+                android.util.Log.d("ImageChooserActivity", "Shell check for $escapedPath: EXISTS=$exists, IS_FILE=$isFile, length=$length, out=${out}, err=${res.err}")
+            }
+
+            val ext = File(resolvedPath).extension
+            val isValidExt = isValidImageExtension(ext)
+            val isValid = exists && isFile && length > 0 && isValidExt
 
             withContext(Dispatchers.Main) {
                 setLoading(false)
-                if (isValid && file != null) {
-                    addExternalImagePath(file.absolutePath)
+                if (isValid && resolvedPath.isNotEmpty()) {
+                    addExternalImagePath(resolvedPath)
                     loadImages()
-                    selectAndReturnFile(file.absolutePath)
+                    selectAndReturnFile(resolvedPath)
                 } else {
                     val errorMsg = when {
-                        file == null || !file.exists() -> "Import failed: File does not exist or is unreadable"
-                        file.length() <= 0 -> "Import failed: Selected file is 0 bytes empty"
-                        !file.canRead() -> "Import failed: Permission denied to read file"
+                        !exists -> "Import failed: File does not exist"
+                        !isFile -> "Import failed: Selected path is not a regular file"
+                        length <= 0 -> "Import failed: Selected file is 0 bytes empty"
+                        !isValidExt -> "Import failed: File extension '.$ext' is not a supported disk image format (.img, .iso, .bin, .raw, .vhd, .qcow2)"
                         else -> "Import failed: Invalid disk image file"
                     }
                     MaterialAlertDialogBuilder(this@ImageChooserActivity)

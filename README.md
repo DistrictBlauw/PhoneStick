@@ -1,43 +1,36 @@
-# Notice
-This is a fork of a fork of a fork of streetwalrus' USB Mountr application.
-I am planning to call it PhoneStick, but this project is still in its infancy.
+# PhoneStick 📱💾
 
-forked from [Swyter/phonestick](https://github.com/Swyter/phonestick)
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/icon.png" width="128" height="128" alt="PhoneStick Icon">
+</p>
 
-who forked it from [dratini0/phonestick](https://github.com/dratini0/phonestick)
+PhoneStick turns your rooted Android device into a USB Mass Storage drive or CD-ROM emulator using Android Kernel ConfigFS and USB gadget drivers.
 
-who forked it from [donfanning/android\_usb\_msd](https://github.com/donfanning/android_usb_msd) (aka streetwalrus.usbmountr ?)
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1_main.png" width="360" alt="PhoneStick Screenshot">
+</p>
 
+## Features
 
-I've also added filepicker fixes from [kodiak-it/USB\_Mountr/](https://github.com/kodiak-it/USB_Mountr)
-and replaced the USB gadget code with [Swyter/android-usb-mass-storage-enable](https://github.com/Swyter/android-usb-mass-storage-enable)
+- **Material Design 3**: Modern, clean UI with dynamic light/dark theme support and speed-dial FAB actions.
+- **Mount Raw Disk Images**: Mount `.img`, `.iso`, `.bin`, `.raw`, `.vhd`, `.qcow2` files directly as USB flash drives or CD-ROMs.
+- **Zero-Copy SAF Resolution**: Resolves external storage URIs (SD cards, Downloads) to direct Linux kernel paths without duplicating files.
+- **Emulation Modes**: Supports Read-Only and virtual CD-ROM emulation modes.
+- **ConfigFS & Sysfs Support**: Direct binding support for Android ConfigFS (`/config/usb_gadget/g1` & `/sys/kernel/config`) and sysfs LUN targets.
+- **Blank Image Creation**: Easily allocate and format blank disk images right inside the app.
 
-If you're interested in getting DriveDroid working with more recent Android hardware there's also:
+## Installation
 
-[Magisk module fixing DriveDroid app functionality on some new Android devices ](https://github.com/overzero-git/DriveDroid-fix-Magisk-module)
+- **GitHub Release**: Download the latest APK from [Releases](https://github.com/mingww64/PhoneStick/releases).
+- **F-Droid**: Build recipe and metadata available in [`metadata/mingww64.phonestick.yml`](metadata/mingww64.phonestick.yml).
 
----------------------------------------
+## Requirements
 
-Below is the original README of USB Mountr.
+- Rooted Android device (Magisk / KernelSU / APatch)
+- Android kernel with USB Mass Storage gadget support (`CONFIG_USB_F_MASS_STORAGE` or ConfigFS)
 
-# USB Mountr
-A helper application to set the Mass Storage Device gadget up in Android kernels  
+## License
 
-## How it works
-Android kernels still include a USB MSD component in their device gadget nowadays, though it is mostly unused since
-Android started using MTP. Some OEM ROMs still use it to provide a drivers installation "disc", but it is otherwise
-useless.  
-This application leverages the module in order to let you use your device as a standard USB thumbdrive for the purpose
-of, e.g., booting a distro ISO.
+[MIT License](LICENSE)
 
-## Building
-Standard gradle build process.
-
-## Contributions...
-...are welcome, I'm looking for a better icon, and if you feel like implementing it before I do, a menu to create blank
-images. Feel free to translate the application to your own language as well.
-
-## See also
-- @morfikov has written up [a tutorial](https://gist.github.com/morfikov/0bd574817143d0239c5a0e1259613b7d) on setting up
-  your phone as a boot device for a LUKS setup
-
+Original work by streetwalrus, dratini0, donfanning, Swyter, and JinbaIttai.

@@ -11,14 +11,24 @@ android {
         applicationId "mingww64.phonestick"
         minSdk 24
         targetSdk 34
-        versionCode 10
-        versionName "2.1.0"
+        versionCode 11
+        versionName "2.2.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        release {
+            storeFile file('release.jks')
+            storePassword 'phonestickpass'
+            keyAlias 'phonestick'
+            keyPassword 'phonestickpass'
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

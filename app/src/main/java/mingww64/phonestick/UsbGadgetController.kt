@@ -36,12 +36,12 @@ object UsbGadgetController {
             resolvedPath = UriPathResolver.getRealPathFromUri(context, Uri.parse(pathOrUri))
         }
 
-        val file = File(resolvedPath)
-        if (!file.exists()) {
+        val escapedPath = resolvedPath.replace("'", "'\\''")
+        val existsCmd = Shell.cmd("if [ -f '$escapedPath' ]; then echo EXISTS; fi").exec()
+        if (!existsCmd.out.contains("EXISTS")) {
             return Pair(false, "Image file path does not exist: $resolvedPath")
         }
 
-        val escapedPath = file.absolutePath.replace("'", "'\\''")
         val roFlag = if (readOnly) "y" else "n"
         val cdromFlag = if (cdrom) "y" else "n"
 

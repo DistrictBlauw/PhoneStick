@@ -14,12 +14,29 @@ object UriPathResolver {
     private const val TAG = "UriPathResolver"
 
     fun getRealPathFromUri(context: Context, uri: Uri): String {
+        val path = getRealPathFromUriInternal(context, uri)
+        if (path.startsWith("/storage/emulated/")) {
+            val passThroughPath = path.replaceFirst("/storage/emulated/", "/mnt/pass_through/0/emulated/")
+            if (checkExistsViaRoot(passThroughPath)) {
+                Log.d(TAG, "Rewrote FUSE path to pass_through path: $passThroughPath")
+                return passThroughPath
+            }
+            val rawPath = path.replaceFirst("/storage/emulated/", "/data/media/")
+            if (checkExistsViaRoot(rawPath)) {
+                Log.d(TAG, "Rewrote FUSE path to raw path: $rawPath")
+                return rawPath
+            }
+        }
+        return path
+    }
+
+    private fun getRealPathFromUriInternal(context: Context, uri: Uri): String {
         Log.d(TAG, "Resolving URI: $uri")
 
         // 1. Direct file scheme
         if ("file".equals(uri.scheme, ignoreCase = true)) {
             val path = uri.path
-            if (!path.isNullOrEmpty() && File(path).exists()) {
+            if (!path.isNullOrEmpty() && checkExistsViaRoot(path)) {
                 return path
             }
         }
@@ -36,15 +53,20 @@ object UriPathResolver {
                     val relativePath = split[1]
 
                     if ("primary".equals(type, ignoreCase = true)) {
+                        // Bypass FUSE by using the underlying raw Ext4 path
+                        val rawDataPath = "/data/media/0/$relativePath"
+                        if (checkExistsViaRoot(rawDataPath)) return rawDataPath
+                        
                         val path = "${Environment.getExternalStorageDirectory()}/$relativePath"
-                        if (File(path).exists()) return path
+                        if (checkExistsViaRoot(path)) return path
+                        
                         val altPath = "/storage/emulated/0/$relativePath"
-                        if (File(altPath).exists()) return altPath
+                        if (checkExistsViaRoot(altPath)) return altPath
                     } else {
                         val path = "/storage/$type/$relativePath"
-                        if (File(path).exists()) return path
+                        if (checkExistsViaRoot(path)) return path
                         val mediaRwPath = "/mnt/media_rw/$type/$relativePath"
-                        if (File(mediaRwPath).exists()) return mediaRwPath
+                        if (checkExistsViaRoot(mediaRwPath)) return mediaRwPath
                     }
                 }
             }
@@ -52,7 +74,7 @@ object UriPathResolver {
             else if ("com.android.providers.downloads.documents" == uri.authority) {
                 if (docId.startsWith("raw:")) {
                     val rawPath = docId.substring(4)
-                    if (File(rawPath).exists()) return rawPath
+                    if (checkExistsViaRoot(rawPath)) return rawPath
                 }
                 try {
                     val contentUri = ContentUris.withAppendedId(
@@ -60,7 +82,7 @@ object UriPathResolver {
                         docId.toLongOrNull() ?: 0L
                     )
                     val path = getDataColumn(context, contentUri, null, null)
-                    if (!path.isNullOrEmpty() && File(path).exists()) return path
+                    if (!path.isNullOrEmpty() && checkExistsViaRoot(path)) return path
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to resolve downloads provider URI: ${e.message}")
                 }
@@ -80,18 +102,32 @@ object UriPathResolver {
                     val selection = "_id=?"
                     val selectionArgs = arrayOf(id)
                     val path = getDataColumn(context, contentUri, selection, selectionArgs)
-                    if (!path.isNullOrEmpty() && File(path).exists()) return path
+                    if (!path.isNullOrEmpty() && checkExistsViaRoot(path)) return path
                 }
             }
         }
         // Generic content scheme query
         else if ("content".equals(uri.scheme, ignoreCase = true)) {
             val path = getDataColumn(context, uri, null, null)
-            if (!path.isNullOrEmpty() && File(path).exists()) return path
+            if (!path.isNullOrEmpty() && checkExistsViaRoot(path)) return path
         }
 
         // 3. Fallback: Copy to app internal storage cache if direct filesystem path not readable by kernel
         return copyUriToAppCache(context, uri)
+    }
+
+    private fun checkExistsViaRoot(path: String): Boolean {
+        if (path.isEmpty()) return false
+        val escapedPath = path.replace("'", "'\\''")
+        try {
+            val res = com.topjohnwu.superuser.Shell.cmd("if [ -e '$escapedPath' ]; then echo EXISTS; fi").exec()
+            val exists = res.out.contains("EXISTS")
+            Log.d(TAG, "checkExistsViaRoot for $path: $exists (out: ${res.out}, err: ${res.err})")
+            return exists
+        } catch (e: Exception) {
+            Log.e(TAG, "checkExistsViaRoot failed for $path", e)
+            return false
+        }
     }
 
     private fun getDataColumn(
