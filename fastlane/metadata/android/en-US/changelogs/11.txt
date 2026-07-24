@@ -1,0 +1,5 @@
+- Updated package name to mingww64.phonestick
+- Updated libsu to latest
+- New Material Design 3 UI
+- Added license viewer and image chooser
+- Stability and bug fixes

@@ -1,0 +1,8 @@
+PhoneStick turns your rooted Android device into a USB Mass Storage drive or CD-ROM emulator using Android Kernel ConfigFS and USB gadget drivers.
+
+Features:
+* Mount raw disk images (.img, .iso, .bin, .raw, .vhd, .qcow2) as USB flash drives or CD-ROMs
+* Material Design 3 interface with dynamic speed-dial floating action menu
+* Zero-copy SAF URI path resolution for images on external SD cards and Downloads
+* Supports Read-Only and CD-ROM emulation modes
+* Instant Linux kernel LUN status validation
