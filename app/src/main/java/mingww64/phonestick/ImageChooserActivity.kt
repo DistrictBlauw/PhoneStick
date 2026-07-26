@@ -11,7 +11,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
+import android.text.Editable
+import android.text.TextWatcher
+import android.content.DialogInterface
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
+import androidx.transition.TransitionManager
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -20,6 +33,11 @@ import mingww64.phonestick.databinding.DialogCreateImageBinding
 import java.io.File
 
 class ImageChooserActivity : AppCompatActivity() {
+
+    private companion object {
+        const val CHANNEL_ID = "image_creation_channel"
+        const val NOTIFICATION_ID = 1001
+    }
 
     private lateinit var binding: ActivityImageChooserBinding
     private lateinit var adapter: ImageFilesAdapter
@@ -52,6 +70,7 @@ class ImageChooserActivity : AppCompatActivity() {
 
         binding.toolbar.setNavigationOnClickListener { finishWithResult() }
 
+        setupNotificationChannel()
         setupSpeedDial()
         setupRecyclerView()
         loadImages()
@@ -84,12 +103,18 @@ class ImageChooserActivity : AppCompatActivity() {
             toggleSpeedDial()
             showCreateImageDialog()
         }
+
+        binding.fabFormatImage.setOnClickListener {
+            toggleSpeedDial()
+            showMultiFormatDialog()
+        }
     }
 
     private fun toggleSpeedDial() {
         isSpeedDialOpen = !isSpeedDialOpen
         if (isSpeedDialOpen) {
-            binding.fabMain.setImageResource(R.drawable.ic_close_vector)
+            // Animate '+' icon rotating 135 degrees into an 'x' icon
+            binding.fabMain.animate().rotation(135f).setDuration(250).start()
 
             binding.fabOverlay.visibility = View.VISIBLE
             binding.fabOverlay.alpha = 0f
@@ -121,8 +146,22 @@ class ImageChooserActivity : AppCompatActivity() {
                 .setDuration(250)
                 .start()
 
+            binding.layoutFormatImage.visibility = View.VISIBLE
+            binding.layoutFormatImage.alpha = 0f
+            binding.layoutFormatImage.translationY = 40f
+            binding.layoutFormatImage.scaleX = 0.8f
+            binding.layoutFormatImage.scaleY = 0.8f
+            binding.layoutFormatImage.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(300)
+                .start()
+
         } else {
-            binding.fabMain.setImageResource(R.drawable.ic_add_vector)
+            // Animate 'x' icon rotating back 135 degrees into a '+' icon
+            binding.fabMain.animate().rotation(0f).setDuration(200).start()
 
             binding.fabOverlay.animate().alpha(0f).setDuration(200).withEndAction {
                 binding.fabOverlay.visibility = View.GONE
@@ -149,6 +188,17 @@ class ImageChooserActivity : AppCompatActivity() {
                     binding.layoutCreateImage.visibility = View.GONE
                 }
                 .start()
+
+            binding.layoutFormatImage.animate()
+                .alpha(0f)
+                .translationY(40f)
+                .scaleX(0.8f)
+                .scaleY(0.8f)
+                .setDuration(150)
+                .withEndAction {
+                    binding.layoutFormatImage.visibility = View.GONE
+                }
+                .start()
         }
     }
 
@@ -172,6 +222,9 @@ class ImageChooserActivity : AppCompatActivity() {
                 loadImages()
             }
         )
+        adapter.onFileLongClick = { file ->
+            enterFormatSelectionMode(initialSelectedFile = file)
+        }
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
     }
@@ -198,7 +251,7 @@ class ImageChooserActivity : AppCompatActivity() {
                 }
                 loadImages()
                 val msg = if (isMountedImage) "Unmounted and removed ${file.name}" else "Removed ${file.name}"
-                Toast.makeText(this@ImageChooserActivity, msg, Toast.LENGTH_SHORT).show()
+                Snackbar.make(binding.root, msg, Snackbar.LENGTH_SHORT).show()
             }
         }
     }
@@ -321,9 +374,80 @@ class ImageChooserActivity : AppCompatActivity() {
         prefs.edit().putStringSet("external_images", current).apply()
     }
 
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        // Notification permission granted or denied
+    }
+
+    private fun setupNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Image Creation"
+            val descriptionText = "Progress notifications for image creation"
+            val importance = NotificationManager.IMPORTANCE_LOW
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun showImageCreationNotification(
+        fileName: String,
+        percent: Int,
+        writtenMb: Long,
+        totalMb: Long,
+        isDone: Boolean = false,
+        isError: Boolean = false,
+        errorMsg: String = ""
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                return
+            }
+        }
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_sd_storage_vector)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+
+        if (isError) {
+            builder.setContentTitle("Failed to create image: $fileName")
+                .setContentText(errorMsg)
+                .setCategory(NotificationCompat.CATEGORY_STATUS)
+                .setOngoing(false)
+                .setProgress(0, 0, false)
+        } else if (isDone) {
+            builder.setContentTitle("Image Created Successfully")
+                .setContentText("$fileName ($totalMb MB) created.")
+                .setCategory(NotificationCompat.CATEGORY_STATUS)
+                .setOngoing(false)
+                .setProgress(0, 0, false)
+        } else {
+            val contentText = if (writtenMb > 0 || totalMb > 0) "$writtenMb MB / $totalMb MB" else "Creating image..."
+            builder.setContentTitle("Creating Image: $fileName")
+                .setContentText(contentText)
+                .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+                .setProgress(100, percent, false)
+                .setOngoing(true)
+        }
+
+        notificationManager.notify(NOTIFICATION_ID, builder.build())
+    }
+
     private fun showCreateImageDialog() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
         val dialogBinding = DialogCreateImageBinding.inflate(layoutInflater)
 
+        // Handle shortcut chip selection
         dialogBinding.chipGroupSize.setOnCheckedStateChangeListener { _, checkedIds ->
             if (checkedIds.isNotEmpty()) {
                 val sizeMb = when (checkedIds.first()) {
@@ -334,32 +458,297 @@ class ImageChooserActivity : AppCompatActivity() {
                     R.id.chip8g -> 8192
                     else -> 1024
                 }
-                dialogBinding.etImageSizeMb.setText(sizeMb.toString())
+                if (dialogBinding.etImageSizeMb.text.toString() != sizeMb.toString()) {
+                    dialogBinding.etImageSizeMb.setText(sizeMb.toString())
+                }
             }
         }
 
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setView(dialogBinding.root)
-            .setPositiveButton(R.string.create_image_confirm) { _, _ ->
-                val name = dialogBinding.etImageName.text.toString().trim()
-                val sizeStr = dialogBinding.etImageSizeMb.text.toString().trim()
-                val sizeMb = sizeStr.toLongOrNull() ?: 1024L
+        // Unselect chip shortcut button when custom specified size box is focused
+        dialogBinding.etImageSizeMb.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                dialogBinding.chipGroupSize.clearCheck()
+            }
+        }
 
-                if (name.isNotEmpty()) {
-                    setLoading(true)
-                    ImageCreator.createBlankImage(filesDir, name, sizeMb) { success, msg, file ->
-                        setLoading(false)
-                        Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
-                        if (success && file != null) {
-                            loadImages()
-                            selectAndReturnFile(file.absolutePath)
-                        }
+        // Unselect chip shortcut button when typing custom specified size
+        dialogBinding.etImageSizeMb.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (dialogBinding.etImageSizeMb.hasFocus() && dialogBinding.chipGroupSize.checkedChipId != View.NO_ID) {
+                    dialogBinding.chipGroupSize.clearCheck()
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(dialogBinding.root)
+            .setPositiveButton(R.string.create_image_confirm, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+
+        dialog.show()
+
+        // Override positive button click handler to prevent auto-dismissal while creation is running
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE)?.setOnClickListener {
+            val name = dialogBinding.etImageName.text.toString().trim()
+            val sizeStr = dialogBinding.etImageSizeMb.text.toString().trim()
+            val sizeMb = sizeStr.toLongOrNull() ?: 1024L
+
+            if (name.isEmpty()) {
+                dialogBinding.etImageName.error = "Name cannot be empty"
+                return@setOnClickListener
+            }
+
+            // Extract selected filesystem format
+            val fsFormat = when (dialogBinding.chipGroupFs.checkedChipId) {
+                R.id.chipFsExt4 -> "EXT4"
+                R.id.chipFsExfat -> "EXFAT"
+                R.id.chipFsNone -> "NONE"
+                else -> "FAT32"
+            }
+            val useFastAllocation = dialogBinding.switchFastAllocation.isChecked
+
+            // Disable controls during creation
+            dialogBinding.etImageName.isEnabled = false
+            dialogBinding.etImageSizeMb.isEnabled = false
+            dialogBinding.chipGroupSize.isEnabled = false
+            dialogBinding.chipGroupFs.isEnabled = false
+            dialogBinding.switchFastAllocation.isEnabled = false
+            dialog.getButton(DialogInterface.BUTTON_POSITIVE)?.isEnabled = false
+            dialog.getButton(DialogInterface.BUTTON_NEGATIVE)?.isEnabled = false
+            dialog.setCancelable(false)
+
+            dialogBinding.layoutProgress.visibility = View.VISIBLE
+            dialogBinding.progressIndicatorDialog.isIndeterminate = false
+            dialogBinding.progressIndicatorDialog.progress = 0
+            dialogBinding.tvProgressStatus.text = "Initializing image creation..."
+
+            val cleanName = if (name.endsWith(".img", ignoreCase = true) || name.endsWith(".iso", ignoreCase = true)) {
+                name
+            } else {
+                "$name.img"
+            }
+
+            showImageCreationNotification(cleanName, 0, 0, sizeMb)
+
+            ImageCreator.createBlankImage(
+                targetDirectory = filesDir,
+                fileName = name,
+                sizeInMB = sizeMb,
+                filesystemFormat = fsFormat,
+                useFastAllocation = useFastAllocation,
+                onProgressStatus = { status, percent, writtenMb, totalMb ->
+                    dialogBinding.progressIndicatorDialog.progress = percent
+                    dialogBinding.tvProgressStatus.text = status
+                    showImageCreationNotification(cleanName, percent, writtenMb, totalMb)
+                },
+                onComplete = { success, msg, file ->
+                    dialog.dismiss()
+                    if (success && file != null) {
+                        showImageCreationNotification(cleanName, 100, sizeMb, sizeMb, isDone = true)
+                        currentlySelectedPath = file.absolutePath
+                        loadImages()
+                        Snackbar.make(binding.root, msg, Snackbar.LENGTH_LONG).show()
+                    } else {
+                        showImageCreationNotification(cleanName, 0, 0, sizeMb, isError = true, errorMsg = msg)
+                        MaterialAlertDialogBuilder(this)
+                            .setTitle("Image Creation Error")
+                            .setMessage(msg)
+                            .setPositiveButton(android.R.string.ok, null)
+                            .show()
                     }
                 }
+            )
+        }
+    }
+
+    private var isFormatSelectionMode = false
+
+    private fun showMultiFormatDialog() {
+        if (imageFiles.isEmpty()) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("No Image Files")
+                .setMessage("There are no image files available to format.")
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+            return
+        }
+
+        enterFormatSelectionMode()
+    }
+
+    private fun enterFormatSelectionMode(initialSelectedFile: File? = null) {
+        TransitionManager.beginDelayedTransition(binding.root)
+        isFormatSelectionMode = true
+        adapter.isSelectionMode = true
+        if (initialSelectedFile != null) {
+            adapter.checkedFiles.add(initialSelectedFile)
+            adapter.notifyDataSetChanged()
+        }
+        binding.speedDialContainer.visibility = View.GONE
+
+        val initialCount = adapter.checkedFiles.size
+        binding.toolbar.title = if (initialCount > 0) "Selected $initialCount Image(s)" else "Select Image(s)"
+        binding.toolbar.setNavigationIcon(R.drawable.ic_close_vector)
+        binding.toolbar.setNavigationOnClickListener {
+            exitFormatSelectionMode()
+        }
+
+        binding.toolbar.menu.clear()
+        binding.toolbar.inflateMenu(R.menu.menu_format)
+        binding.toolbar.setOnMenuItemClickListener { item ->
+            val selected = adapter.checkedFiles.toList()
+            when (item.itemId) {
+                R.id.action_confirm_format -> {
+                    if (selected.isEmpty()) {
+                        Snackbar.make(binding.root, "Select at least 1 image to format", Snackbar.LENGTH_SHORT).show()
+                    } else {
+                        showFormatSelectionDialog(selected)
+                    }
+                    true
+                }
+                R.id.action_confirm_delete -> {
+                    if (selected.isEmpty()) {
+                        Snackbar.make(binding.root, "Select at least 1 image to delete", Snackbar.LENGTH_SHORT).show()
+                    } else {
+                        confirmBatchDelete(selected)
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+
+        adapter.onSelectionCountChanged = { count ->
+            binding.toolbar.title = if (count > 0) "Selected $count Image(s)" else "Select Image(s)"
+        }
+    }
+
+    private fun confirmBatchDelete(selectedFiles: List<File>) {
+        val count = selectedFiles.size
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Delete $count Image(s)")
+            .setMessage("Are you sure you want to delete $count selected image file(s)? This action cannot be undone.")
+            .setPositiveButton("Delete") { _, _ ->
+                executeBatchDelete(selectedFiles)
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
     }
+
+    private fun executeBatchDelete(selectedFiles: List<File>) {
+        setLoading(true)
+        lifecycleScope.launch(Dispatchers.IO) {
+            val mountStatus = UsbGadgetController.getMountStatus()
+            val mountedPath = if (mountStatus.isMounted) mountStatus.currentFile else ""
+
+            for (file in selectedFiles) {
+                if (file.absolutePath == mountedPath || file.absolutePath == currentlySelectedPath) {
+                    UsbGadgetController.unmountImage(this@ImageChooserActivity)
+                    if (currentlySelectedPath == file.absolutePath) {
+                        currentlySelectedPath = ""
+                    }
+                }
+                removeExternalImagePath(file.absolutePath)
+                if (file.exists()) {
+                    file.delete()
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                setLoading(false)
+                exitFormatSelectionMode()
+                loadImages()
+                Snackbar.make(binding.root, "Deleted ${selectedFiles.size} image file(s)", Snackbar.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun exitFormatSelectionMode() {
+        TransitionManager.beginDelayedTransition(binding.root)
+        isFormatSelectionMode = false
+        adapter.isSelectionMode = false
+        binding.speedDialContainer.visibility = View.VISIBLE
+
+        binding.toolbar.title = getString(R.string.title_activity_image_chooser)
+        binding.toolbar.setNavigationIcon(R.drawable.ic_arrow_back_vector)
+        binding.toolbar.setNavigationOnClickListener { finishWithResult() }
+        binding.toolbar.menu.clear()
+    }
+
+    private fun showFormatSelectionDialog(selectedFiles: List<File>) {
+        val formats = arrayOf("FAT32", "ext4", "exFAT")
+        var selectedFormatIndex = 0
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Choose Filesystem Format")
+            .setSingleChoiceItems(formats, 0) { _, which ->
+                selectedFormatIndex = which
+            }
+            .setPositiveButton("Format (${selectedFiles.size} file(s))") { _, _ ->
+                val format = formats[selectedFormatIndex]
+                executeBatchFormatting(selectedFiles, format)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun executeBatchFormatting(selectedFiles: List<File>, format: String) {
+        setLoading(true)
+        val errors = mutableListOf<String>()
+        var progressSnackbar: Snackbar? = null
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            for ((index, file) in selectedFiles.withIndex()) {
+                withContext(Dispatchers.Main) {
+                    progressSnackbar?.dismiss()
+                    progressSnackbar = Snackbar.make(
+                        binding.root,
+                        "Formatting ${index + 1}/${selectedFiles.size}: ${file.name}...",
+                        Snackbar.LENGTH_INDEFINITE
+                    )
+                    progressSnackbar?.show()
+                }
+
+                val (success, message) = suspendFormatImage(file, format)
+                if (!success) {
+                    errors.add("${file.name}: $message")
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                progressSnackbar?.dismiss()
+                setLoading(false)
+                exitFormatSelectionMode()
+                loadImages()
+
+                if (errors.isEmpty()) {
+                    MaterialAlertDialogBuilder(this@ImageChooserActivity)
+                        .setTitle("Formatting Complete")
+                        .setMessage("Successfully formatted ${selectedFiles.size} file(s) as $format.")
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                } else {
+                    MaterialAlertDialogBuilder(this@ImageChooserActivity)
+                        .setTitle("Format CLI Errors")
+                        .setMessage("Completed with errors:\n\n" + errors.joinToString("\n\n"))
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                }
+            }
+        }
+    }
+
+    private suspend fun suspendFormatImage(file: File, format: String): Pair<Boolean, String> =
+        suspendCancellableCoroutine { continuation ->
+            ImageCreator.formatExistingImage(file, format, onProgressStatus = {}) { success, msg ->
+                if (continuation.isActive) {
+                    continuation.resume(Pair(success, msg))
+                }
+            }
+        }
 
     private fun setLoading(isLoading: Boolean) {
         binding.progressIndicator.visibility = if (isLoading) View.VISIBLE else View.GONE
@@ -385,6 +774,10 @@ class ImageChooserActivity : AppCompatActivity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        finishWithResult()
+        if (isFormatSelectionMode) {
+            exitFormatSelectionMode()
+        } else {
+            finishWithResult()
+        }
     }
 }

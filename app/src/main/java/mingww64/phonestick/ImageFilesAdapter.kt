@@ -21,6 +21,17 @@ class ImageFilesAdapter(
     private val onFileRenamed: (File, File) -> Unit
 ) : RecyclerView.Adapter<ImageFilesAdapter.ViewHolder>() {
 
+    var isSelectionMode: Boolean = false
+        set(value) {
+            field = value
+            if (!value) checkedFiles.clear()
+            notifyDataSetChanged()
+        }
+
+    val checkedFiles = mutableSetOf<File>()
+    var onSelectionCountChanged: (Int) -> Unit = {}
+    var onFileLongClick: ((File) -> Unit)? = null
+
     inner class ViewHolder(val binding: ImageChooserRowBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -54,14 +65,37 @@ class ImageFilesAdapter(
             holder.binding.tvSelectedBadge.visibility = View.GONE
         }
 
-        // Click on item selects the file
-        holder.itemView.setOnClickListener {
-            onFileSelected(file)
-        }
+        if (isSelectionMode) {
+            holder.binding.cbSelect.visibility = View.VISIBLE
+            holder.binding.cbSelect.isChecked = checkedFiles.contains(file)
+            holder.binding.btnOverflow.visibility = View.GONE
 
-        // Item overflow menu
-        holder.binding.btnOverflow.setOnClickListener { view ->
-            showPopupMenu(context, view, file)
+            holder.itemView.setOnClickListener {
+                if (checkedFiles.contains(file)) {
+                    checkedFiles.remove(file)
+                } else {
+                    checkedFiles.add(file)
+                }
+                notifyItemChanged(position)
+                onSelectionCountChanged(checkedFiles.size)
+            }
+            holder.itemView.setOnLongClickListener(null)
+        } else {
+            holder.binding.cbSelect.visibility = View.GONE
+            holder.binding.btnOverflow.visibility = View.VISIBLE
+
+            holder.itemView.setOnClickListener {
+                onFileSelected(file)
+            }
+
+            holder.itemView.setOnLongClickListener {
+                onFileLongClick?.invoke(file)
+                true
+            }
+
+            holder.binding.btnOverflow.setOnClickListener { view ->
+                showPopupMenu(context, view, file)
+            }
         }
     }
 

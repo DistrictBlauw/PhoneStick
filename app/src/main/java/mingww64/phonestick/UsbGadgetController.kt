@@ -112,8 +112,10 @@ object UsbGadgetController {
             return Pair(true, "Successfully mounted via ConfigFS gadget")
         }
 
-        val errReason = if (result1.err.isNotEmpty()) result1.err.joinToString("\n") else "Kernel rejected LUN file binding"
-        return Pair(false, "Failed to mount USB gadget: $errReason")
+        val errReason = result1.err.joinToString("\n").ifEmpty {
+            result1.out.joinToString("\n").ifEmpty { "Kernel rejected LUN file binding" }
+        }
+        return Pair(false, "Failed to mount USB gadget (exit code ${result1.code}): $errReason")
     }
 
     fun unmountImage(context: Context? = null): Pair<Boolean, String> {
@@ -153,7 +155,8 @@ object UsbGadgetController {
         return if (result.isSuccess) {
             Pair(true, "Unmounted successfully")
         } else {
-            Pair(false, "Unmount failed: ${result.err.joinToString("\n")}")
+            val errText = result.err.joinToString("\n").ifEmpty { result.out.joinToString("\n").ifEmpty { "Exit code ${result.code}" } }
+            Pair(false, "Unmount failed (exit code ${result.code}): $errText")
         }
     }
 

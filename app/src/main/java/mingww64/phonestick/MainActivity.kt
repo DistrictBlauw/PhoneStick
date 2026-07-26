@@ -6,7 +6,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.Toast
+import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -32,12 +33,16 @@ class MainActivity : AppCompatActivity() {
 
             Log.d("MainActivity", "selectImageLauncher path=$path, autoMount=$autoMount")
 
-            selectedImagePath = path
-            saveSelectedImagePath(path)
-            refreshStatus()
+            if (path.isNotEmpty()) {
+                selectedImagePath = path
+                saveSelectedImagePath(path)
+                refreshStatus()
 
-            if (autoMount && selectedImagePath.isNotEmpty()) {
-                mountSelectedImage()
+                if (autoMount) {
+                    mountSelectedImage()
+                }
+            } else {
+                Snackbar.make(binding.root, R.string.file_picker_nofile, Snackbar.LENGTH_SHORT).show()
             }
         }
     }
@@ -80,7 +85,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnMount.setOnClickListener {
             if (selectedImagePath.isEmpty()) {
-                Toast.makeText(this, R.string.file_picker_nofile, Toast.LENGTH_SHORT).show()
+                Snackbar.make(binding.root, R.string.file_picker_nofile, Snackbar.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             mountSelectedImage()
@@ -182,40 +187,53 @@ class MainActivity : AppCompatActivity() {
         val readOnly = binding.switchReadOnly.isChecked
         val cdrom = binding.switchCdrom.isChecked
 
-        setLoading(true, "Mounting USB Mass Storage...")
+        setLoading(true)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val (_, message) = UsbGadgetController.mountImage(this@MainActivity, selectedImagePath, readOnly, cdrom)
+            val (success, message) = UsbGadgetController.mountImage(this@MainActivity, selectedImagePath, readOnly, cdrom)
             withContext(Dispatchers.Main) {
                 setLoading(false)
-                Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+                if (success) {
+                    Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+                } else {
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("Mount Error")
+                        .setMessage(message)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                }
                 refreshStatus()
             }
         }
     }
 
     private fun unmountGadget() {
-        setLoading(true, "Unmounting USB Mass Storage...")
+        setLoading(true)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val (_, message) = UsbGadgetController.unmountImage(this@MainActivity)
+            val (success, message) = UsbGadgetController.unmountImage(this@MainActivity)
             withContext(Dispatchers.Main) {
                 setLoading(false)
-                Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+                if (success) {
+                    Snackbar.make(binding.root, message, Snackbar.LENGTH_SHORT).show()
+                } else {
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("Unmount Error")
+                        .setMessage(message)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                }
                 refreshStatus()
             }
         }
     }
 
-    private fun setLoading(isLoading: Boolean, message: String = "") {
+    private fun setLoading(isLoading: Boolean) {
         if (isLoading) {
             binding.progressIndicator.visibility = View.VISIBLE
             binding.btnMount.isEnabled = false
             binding.btnUnmount.isEnabled = false
             binding.btnSelectImage.isEnabled = false
-            if (message.isNotEmpty()) {
-                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-            }
         } else {
             binding.progressIndicator.visibility = View.GONE
             updateFadedState(isCurrentlyMounted, selectedImagePath.isNotEmpty())

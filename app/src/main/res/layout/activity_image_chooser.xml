@@ -54,7 +54,7 @@
         android:gravity="end"
         android:orientation="vertical">
 
-        <!-- Sub-FAB 2: Create Blank Image -->
+        <!-- Sub-FAB 1 (Top): Create Blank Image -->
         <LinearLayout
             android:id="@+id/layoutCreateImage"
             android:layout_width="wrap_content"
@@ -69,7 +69,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_active_chip"
+                android:background="@drawable/bg_fab_label"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="6dp"
                 android:text="Create Blank Image"
@@ -82,16 +82,17 @@
                 android:layout_height="wrap_content"
                 android:contentDescription="Create blank image"
                 app:fabSize="mini"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.PhoneStick.CircleFab"
                 app:srcCompat="@drawable/ic_add_vector" />
 
         </LinearLayout>
 
-        <!-- Sub-FAB 1: Import Image -->
+        <!-- Sub-FAB 2 (Middle): Import Image -->
         <LinearLayout
             android:id="@+id/layoutImportImage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="12dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:visibility="gone"
@@ -101,7 +102,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_active_chip"
+                android:background="@drawable/bg_fab_label"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="6dp"
                 android:text="Import Image"
@@ -114,7 +115,41 @@
                 android:layout_height="wrap_content"
                 android:contentDescription="Import existing image"
                 app:fabSize="mini"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.PhoneStick.CircleFab"
                 app:srcCompat="@drawable/ic_folder_open_vector" />
+
+        </LinearLayout>
+
+        <!-- Sub-FAB 3 (Bottom): Format Image(s) -->
+        <LinearLayout
+            android:id="@+id/layoutFormatImage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_fab_label"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:text="Format Image(s)"
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textColor="?attr/colorOnPrimary" />
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fabFormatImage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="Format image files"
+                app:fabSize="mini"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.PhoneStick.CircleFab"
+                app:srcCompat="@drawable/ic_sd_storage_vector" />
 
         </LinearLayout>
 
@@ -124,6 +159,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="Add image actions"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.PhoneStick.CircleFab"
             app:srcCompat="@drawable/ic_add_vector" />
 
     </LinearLayout>
