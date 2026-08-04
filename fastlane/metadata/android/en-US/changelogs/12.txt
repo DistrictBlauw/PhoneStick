@@ -1,0 +1,5 @@
+- Improved UI styling and speed dial animations
+- Added splash screen root check
+- Live progress notifications for image creation
+- Select multiple images to format or delete
+- Detailed error messages when commands fail

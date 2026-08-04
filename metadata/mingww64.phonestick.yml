@@ -7,35 +7,30 @@ IssueTracker: https://github.com/mingww64/PhoneStick/issues
 Changelog: https://github.com/mingww64/PhoneStick/releases
 
 AutoName: PhoneStick
-Description: |-
-  PhoneStick turns your rooted device into a USB Mass Storage drive
-  or CD-ROM emulator using Linux Kernel ConfigFS and USB gadget drivers.
-
-  Key Features:
-  * Mount raw disk images (.img, .iso, .bin, .raw, .vhd) as USB flash drives or CD-ROMs
-  * Modern Material Design 3 interface with animated speed-dial action menu
-  * Zero-copy SAF URI path resolution for images stored on external SD cards
-  * Supports read-only and CD-ROM emulation modes
-  * Real-time Linux kernel LUN status detection
 
 RepoType: git
 Repo: https://github.com/mingww64/PhoneStick.git
-Binaries: https://github.com/mingww64/PhoneStick/releases/download/v%v/app-release.apk?cachebust=3
 
 Builds:
   - versionName: 2.2.0
     versionCode: 11
-    commit: v2.2.0
+    commit: d126f6f91f7b838f51420be3daa946335a6be2bc
+    subdir: app
     gradle:
       - yes
-    output: app/build/outputs/apk/release/app-release-unsigned.apk
     target: android-34
 
-AllowedAPKSigningKeys: 0c7df753bbdb392ba0d055daaac5b37733658e4d9ef7629c50cd6bfbceca20b3
+  - versionName: 2.3.0
+    versionCode: 12
+    commit: 70eee3783e18aa902b686b35dbea2ffec36b83f0
+    subdir: app
+    gradle:
+      - yes
+    target: android-34
 
 MaintainerNotes: Requires root access to bind Android kernel USB gadget drivers.
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 2.2.0
-CurrentVersionCode: 11
+CurrentVersion: 2.3.0
+CurrentVersionCode: 12
