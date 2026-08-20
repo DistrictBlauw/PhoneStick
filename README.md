@@ -4,6 +4,16 @@
   <img src="fastlane/metadata/android/en-US/images/icon.png" width="128" height="128" alt="PhoneStick Icon">
 </p>
 
+<p align="center">
+  English | [简体中文](README.zh-CN.md)
+</p>
+
+<p align="center">
+  <a href="https://github.com/DistrictBlauw/PhoneStick/actions/workflows/build.yml">
+    <img src="https://github.com/DistrictBlauw/PhoneStick/actions/workflows/build.yml/badge.svg" alt="Build APK">
+  </a>
+</p>
+
 PhoneStick turns your rooted Android device into a USB Mass Storage drive or CD-ROM emulator using Android Kernel ConfigFS and USB gadget drivers.
 
 <p align="center">
@@ -23,13 +33,25 @@ PhoneStick turns your rooted Android device into a USB Mass Storage drive or CD-
 
 ## Installation
 
-- **GitHub Release**: Download the latest APK from [Releases](https://github.com/mingww64/PhoneStick/releases).
+- **GitHub Release**: Download the latest APK from [Releases](https://github.com/DistrictBlauw/PhoneStick/releases).
+- **CI builds**: Every push builds debug and signed release APKs via [GitHub Actions](https://github.com/DistrictBlauw/PhoneStick/actions/workflows/build.yml); grab them from the run's Artifacts. Pushing a `v*` tag publishes a Release automatically.
 - **F-Droid**: Build recipe and metadata available in [`metadata/mingww64.phonestick.yml`](metadata/mingww64.phonestick.yml).
 
 ## Requirements
 
 - Rooted Android device (Magisk / KernelSU / APatch)
 - Android kernel with USB Mass Storage gadget support (`CONFIG_USB_F_MASS_STORAGE` or ConfigFS)
+
+## Build locally
+
+```bash
+git clone https://github.com/DistrictBlauw/PhoneStick.git
+cd PhoneStick
+./gradlew assembleDebug     # debug APK
+./gradlew assembleRelease   # signed release APK (keystore included)
+```
+
+JDK 17 required; Gradle 8.7 / AGP 8.5.0 / Kotlin 1.9.24 are fetched by the wrapper.
 
 ## How the OPlus (OnePlus / OPPO / realme) strategy works
 
