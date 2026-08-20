@@ -1,0 +1,57 @@
+<resources>
+    <string name="app_name">PhoneStick</string>
+
+    <string name="licenses">开源许可</string>
+    <string name="licenses_upstream">上游源码</string>
+    <string name="logs">日志</string>
+
+    <string name="file_picker_nofile">未选择镜像</string>
+
+    <!-- MainActivity -->
+    <string name="status_title">USB 大容量存储状态</string>
+    <string name="status_mounted">已挂载</string>
+    <string name="status_unmounted">未挂载</string>
+    <string name="status_lun_path">LUN：%1$s</string>
+    <string name="host_source_file">已选镜像</string>
+    <string name="host_ro">只读模式</string>
+    <string name="host_ro_summary">防止主机 PC 修改磁盘镜像</string>
+    <string name="host_cdrom">光盘模拟</string>
+    <string name="host_cdrom_summary">模拟虚拟光驱</string>
+    <string name="host_serve">挂载 USB 驱动器</string>
+    <string name="host_disable">卸载 USB 驱动器</string>
+    <string name="btn_select_image">选择镜像</string>
+    <string name="btn_create_image">创建空白磁盘镜像</string>
+    <string name="host_help">PhoneStick 可将手机模拟为 USB 大容量存储设备或虚拟光驱。请确保已授予 Root 权限且内核支持相关功能。</string>
+    <string name="imported_document">导入的文件</string>
+
+    <!-- ImageChooserActivity & Dialogs -->
+    <string name="title_activity_image_chooser">选择或创建磁盘镜像</string>
+    <string name="image_chooser_filesize_mib">%1$.1f MiB</string>
+    <string name="image_chooser_add">导入镜像</string>
+    <string name="create_image_dialog_title">创建空白磁盘镜像</string>
+    <string name="create_image_name_hint">镜像名称（如 boot.img）</string>
+    <string name="create_image_size_hint">大小（MB，如 512、1024、4096）</string>
+    <string name="create_image_confirm">创建镜像</string>
+    <string name="cancel">取消</string>
+
+    <!-- Error dialogs -->
+    <string name="mount_error_title">挂载失败</string>
+    <string name="unmount_error_title">卸载失败</string>
+
+    <!-- LogActivity -->
+    <string name="log_title">应用日志</string>
+    <string name="log_export">导出日志</string>
+    <string name="log_share">分享日志</string>
+    <string name="log_clear">清空日志</string>
+    <string name="log_clear_confirm">确定删除所有已保存的日志吗？此操作无法撤销。</string>
+    <string name="log_empty">暂无日志</string>
+    <string name="log_export_success">日志已保存到 %1$s</string>
+    <string name="log_export_failed">导出日志失败</string>
+    <string name="log_cleared">日志已清空</string>
+
+    <!-- Toast messages -->
+    <string name="host_success">设备现在应已在 PC 上显示</string>
+    <string name="host_disable_success">设备现在应已从 PC 上消失</string>
+    <string name="host_noroot">无法获取 Root 权限</string>
+    <string name="file_picker_denied">请授予存储权限以选择或保存文件</string>
+</resources>

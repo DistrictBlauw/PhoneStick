@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:title="@string/log_share"
+        android:id="@+id/menu_log_share"
+        android:showAsAction="never" />
+
+    <item android:title="@string/log_export"
+        android:id="@+id/menu_log_export"
+        android:showAsAction="never" />
+
+    <item android:title="@string/log_clear"
+        android:id="@+id/menu_log_clear"
+        android:showAsAction="never" />
+</menu>

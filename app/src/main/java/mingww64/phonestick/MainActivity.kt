@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -24,6 +23,10 @@ class MainActivity : AppCompatActivity() {
     private var selectedImagePath: String = ""
     private var isCurrentlyMounted: Boolean = false
 
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     private val selectImageLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -31,7 +34,7 @@ class MainActivity : AppCompatActivity() {
             val path = result.data?.getStringExtra("path") ?: ""
             val autoMount = result.data?.getBooleanExtra("auto_mount", false) ?: false
 
-            Log.d("MainActivity", "selectImageLauncher path=$path, autoMount=$autoMount")
+            AppLogger.d(TAG, "selectImageLauncher path=$path, autoMount=$autoMount")
 
             if (path.isNotEmpty()) {
                 selectedImagePath = path
@@ -67,6 +70,11 @@ class MainActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.topAppBar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
+                R.id.menu_logs -> {
+                    AppLogger.i(TAG, "Opening log viewer")
+                    startActivity(Intent(this, LogActivity::class.java))
+                    true
+                }
                 R.id.menu_licenses -> {
                     startActivity(Intent(this, LicenseActivity::class.java))
                     true
@@ -106,6 +114,11 @@ class MainActivity : AppCompatActivity() {
     private fun refreshStatus() {
         lifecycleScope.launch(Dispatchers.IO) {
             val status = UsbGadgetController.getMountStatus()
+            AppLogger.d(
+                TAG,
+                "Status refresh: mounted=${status.isMounted}, file=${status.currentFile}, " +
+                    "ro=${status.isReadOnly}, cdrom=${status.isCdrom}, lun=${status.lunPath}"
+            )
             
             // Check if stored image file still exists
             if (selectedImagePath.isNotEmpty() && !selectedImagePath.startsWith("content://")) {
@@ -145,7 +158,7 @@ class MainActivity : AppCompatActivity() {
                 if (rawName.contains(':')) {
                     rawName = rawName.substringAfterLast(':')
                 }
-                binding.tvSelectedFileName.text = if (rawName.isNotBlank()) rawName else "Imported Document"
+                binding.tvSelectedFileName.text = if (rawName.isNotBlank()) rawName else getString(R.string.imported_document)
                 binding.tvSelectedPath.text = decoded
             } else {
                 val file = File(selectedImagePath)
@@ -187,17 +200,19 @@ class MainActivity : AppCompatActivity() {
         val readOnly = binding.switchReadOnly.isChecked
         val cdrom = binding.switchCdrom.isChecked
 
+        AppLogger.i(TAG, "Mount requested: path=$selectedImagePath, readOnly=$readOnly, cdrom=$cdrom")
         setLoading(true)
 
         lifecycleScope.launch(Dispatchers.IO) {
             val (success, message) = UsbGadgetController.mountImage(this@MainActivity, selectedImagePath, readOnly, cdrom)
+            if (success) AppLogger.i(TAG, "Mount finished: $message") else AppLogger.e(TAG, "Mount failed: $message")
             withContext(Dispatchers.Main) {
                 setLoading(false)
                 if (success) {
                     Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
                 } else {
                     MaterialAlertDialogBuilder(this@MainActivity)
-                        .setTitle("Mount Error")
+                        .setTitle(R.string.mount_error_title)
                         .setMessage(message)
                         .setPositiveButton(android.R.string.ok, null)
                         .show()
@@ -208,17 +223,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun unmountGadget() {
+        AppLogger.i(TAG, "Unmount requested")
         setLoading(true)
 
         lifecycleScope.launch(Dispatchers.IO) {
             val (success, message) = UsbGadgetController.unmountImage(this@MainActivity)
+            if (success) AppLogger.i(TAG, "Unmount finished: $message") else AppLogger.e(TAG, "Unmount failed: $message")
             withContext(Dispatchers.Main) {
                 setLoading(false)
                 if (success) {
                     Snackbar.make(binding.root, message, Snackbar.LENGTH_SHORT).show()
                 } else {
                     MaterialAlertDialogBuilder(this@MainActivity)
-                        .setTitle("Unmount Error")
+                        .setTitle(R.string.unmount_error_title)
                         .setMessage(message)
                         .setPositiveButton(android.R.string.ok, null)
                         .show()

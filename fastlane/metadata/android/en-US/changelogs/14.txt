@@ -1,0 +1,17 @@
+Add configuration backup before mount and exact restore after unmount.
+
+Before any gadget modification PhoneStick now snapshots the original USB
+state into app-private storage:
+
+- full OPlus snapshot: UDC binding, every function symlink in every config,
+  every mass_storage LUN (file / ro / cdrom) and stall flags
+- legacy strategy additionally records the original LUN contents and
+  sys.usb.config value
+
+Unmount now restores that snapshot exactly instead of just clearing the LUN:
+mass_storage links are stripped, links that existed before are recreated,
+LUN parameters and stall flags are written back, and the saved UDC is
+re-attached. The restore is verified (missing nodes or mismatched values are
+reported) and a failed restore keeps the backup so unmount can be retried.
+Snapshots are never overwritten by repeated mounts, so the original state is
+always the restore target.

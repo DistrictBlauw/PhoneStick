@@ -1,0 +1,17 @@
+Add Simplified Chinese localization and a detailed logging system with
+export.
+
+- New complete zh-rCN translation covering every string in the app.
+- New persistent application logger (AppLogger): every operation is recorded
+  with timestamp, level and tag into an in-memory ring buffer mirrored to
+  app-private storage, so logs survive restarts. Entries are also forwarded
+  to logcat.
+- Detailed traces across the whole mount pipeline: root checks, OPlus
+  detection, gadget dir lookup, strategy selection, full shell command
+  results (exit code / stdout / stderr), gadget backup snapshots, restore
+  verification and sys.usb.config toggles.
+- New log viewer (Logs in the main menu) with level coloring, export to any
+  location via the system file picker, sharing as a .txt attachment and
+  one-tap clear with confirmation.
+- Localized previously hardcoded dialogs ("Mount failed" / "Unmount failed"
+  titles and the imported-document placeholder).

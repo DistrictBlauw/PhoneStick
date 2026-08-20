@@ -1,0 +1,17 @@
+Add OnePlus / OPPO / realme (ColorOS, OxygenOS) support.
+
+ColorOS mounts configfs at /config and pre-creates the g1 gadget with a
+mass_storage.0 function instance, but its init never composes sys.usb.config
+with mass_storage, so the legacy setprop toggle did nothing and hosts never
+saw the emulated drive.
+
+The new OPlus strategy works directly on configfs:
+- detach g1 from the UDC (e.g. a600000.dwc3) so the config is editable
+- fill mass_storage.0/lun.0 (file, ro, cdrom, removable, stall)
+- symlink functions/mass_storage.0 into the active config (configs/b.1)
+- re-attach the UDC so the host re-enumerates the composite device
+
+ADB and MTP keep working during emulation. Includes an SELinux fallback for
+builds that deny configfs writes to root, richer failure diagnostics with
+recent audit denials, and a more robust mount status lookup that resolves the
+configfs mount point dynamically.

@@ -3,6 +3,7 @@
 
     <string name="licenses">Licenses</string>
     <string name="licenses_upstream">Upstream source</string>
+    <string name="logs">Logs</string>
 
     <string name="file_picker_nofile">No image selected</string>
 
@@ -21,6 +22,7 @@
     <string name="btn_select_image">Choose Image</string>
     <string name="btn_create_image">Create Blank Disk Image</string>
     <string name="host_help">PhoneStick emulates a USB mass storage drive or virtual CD-ROM. Ensure root permission is granted and a compatible kernel is available.</string>
+    <string name="imported_document">Imported Document</string>
 
     <!-- ImageChooserActivity & Dialogs -->
     <string name="title_activity_image_chooser">Select or Create Disk Image</string>
@@ -31,6 +33,21 @@
     <string name="create_image_size_hint">Size in MB (e.g. 512, 1024, 4096)</string>
     <string name="create_image_confirm">Create Image</string>
     <string name="cancel">Cancel</string>
+
+    <!-- Error dialogs -->
+    <string name="mount_error_title">Mount failed</string>
+    <string name="unmount_error_title">Unmount failed</string>
+
+    <!-- LogActivity -->
+    <string name="log_title">Application Log</string>
+    <string name="log_export">Export log</string>
+    <string name="log_share">Share log</string>
+    <string name="log_clear">Clear log</string>
+    <string name="log_clear_confirm">Delete all saved log entries? This cannot be undone.</string>
+    <string name="log_empty">No log entries yet</string>
+    <string name="log_export_success">Log saved to %1$s</string>
+    <string name="log_export_failed">Failed to export log</string>
+    <string name="log_cleared">Log cleared</string>
 
     <!-- Toast messages -->
     <string name="host_success">The device should now show up on your PC</string>
