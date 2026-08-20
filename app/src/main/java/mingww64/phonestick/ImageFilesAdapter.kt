@@ -101,21 +101,24 @@ class ImageFilesAdapter(
 
     private fun showPopupMenu(context: Context, anchorView: View, file: File) {
         val popup = PopupMenu(context, anchorView)
-        popup.menu.add("Mount Now")
-        popup.menu.add("Rename")
-        popup.menu.add("Delete")
+        val mountTitle = context.getString(R.string.menu_mount_now)
+        val renameTitle = context.getString(R.string.menu_rename)
+        val deleteTitle = context.getString(R.string.menu_delete)
+        popup.menu.add(mountTitle)
+        popup.menu.add(renameTitle)
+        popup.menu.add(deleteTitle)
 
         popup.setOnMenuItemClickListener { item ->
             when (item.title) {
-                "Mount Now" -> {
+                mountTitle -> {
                     onFileMount(file)
                     true
                 }
-                "Rename" -> {
+                renameTitle -> {
                     showRenameDialog(context, file)
                     true
                 }
-                "Delete" -> {
+                deleteTitle -> {
                     showDeleteDialog(context, file)
                     true
                 }
@@ -131,9 +134,9 @@ class ImageFilesAdapter(
         input.setSelection(file.name.lastIndexOf('.').let { if (it > 0) it else file.name.length })
 
         MaterialAlertDialogBuilder(context)
-            .setTitle("Rename Image")
+            .setTitle(R.string.rename_image_title)
             .setView(input)
-            .setPositiveButton("Rename") { _, _ ->
+            .setPositiveButton(R.string.menu_rename) { _, _ ->
                 val newName = input.text.toString().trim()
                 if (newName.isNotEmpty() && newName != file.name) {
                     val newFile = File(file.parentFile, newName)
@@ -142,25 +145,25 @@ class ImageFilesAdapter(
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
     private fun showDeleteDialog(context: Context, file: File) {
         val isSelected = file.absolutePath == selectedPath
         val msg = if (isSelected) {
-            "\"${file.name}\" is currently active. Deleting it will automatically unmount the USB drive and delete the file. Continue?"
+            context.getString(R.string.delete_confirm_active, file.name)
         } else {
-            "Are you sure you want to delete \"${file.name}\"?"
+            context.getString(R.string.delete_confirm, file.name)
         }
 
         MaterialAlertDialogBuilder(context)
-            .setTitle("Delete Image")
+            .setTitle(R.string.delete_image_title)
             .setMessage(msg)
-            .setPositiveButton("Delete") { _, _ ->
+            .setPositiveButton(R.string.menu_delete) { _, _ ->
                 onFileDeleted(file)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 

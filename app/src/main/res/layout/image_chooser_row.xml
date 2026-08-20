@@ -70,7 +70,7 @@
                     android:layout_marginStart="8dp"
                     android:paddingHorizontal="8dp"
                     android:paddingVertical="2dp"
-                    android:text="ACTIVE"
+                    android:text="@string/badge_active"
                     android:textAppearance="?attr/textAppearanceLabelSmall"
                     android:textColor="?attr/colorOnPrimary"
                     android:background="@drawable/bg_active_chip"

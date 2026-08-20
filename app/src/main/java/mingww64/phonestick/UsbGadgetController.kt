@@ -223,7 +223,7 @@ object UsbGadgetController {
     private fun restoreOplusBackup(context: Context, json: JSONObject): Pair<Boolean, String> {
         val gadget = json.optString("gadget")
         val udc = json.optString("udc")
-        if (gadget.isBlank()) return Pair(false, "Backup has no gadget directory")
+        if (gadget.isBlank()) return Pair(false, context.getString(R.string.err_backup_no_gadget))
         AppLogger.i(TAG, "Restoring OPlus backup: gadget=$gadget, udc=$udc, links=${json.optJSONArray("links")?.length() ?: 0}, luns=${json.optJSONArray("luns")?.length() ?: 0}")
 
         val script = ArrayList<String>()
@@ -285,12 +285,12 @@ object UsbGadgetController {
         return if (res.out.any { it.trim() == "RESTORE_OK" }) {
             clearBackupKeys(context)
             AppLogger.i(TAG, "OPlus backup restored successfully (UDC=$udc)")
-            Pair(true, "Original USB configuration restored (UDC=$udc)")
+            Pair(true, context.getString(R.string.msg_restored_oplus, udc))
         } else {
             val failLine = res.out.firstOrNull { it.contains("RESTORE_FAIL") } ?: ""
             val err = res.err.joinToString("\n").ifEmpty { failLine }
             AppLogger.e(TAG, "OPlus restore failed: $err (backup kept for retry)")
-            Pair(false, "Restore failed, backup kept for retry: $err")
+            Pair(false, context.getString(R.string.err_restore_failed, err))
         }
     }
 
@@ -328,10 +328,10 @@ object UsbGadgetController {
         restoreOriginalUsbConfig(context)
         return if (ok) {
             AppLogger.i(TAG, "g1 LUN backup restored successfully")
-            Pair(true, "Original LUN configuration restored")
+            Pair(true, context.getString(R.string.msg_restored_g1))
         } else {
             AppLogger.e(TAG, "g1 LUN restore failed: ${res.err.joinToString("\n")} (backup kept for retry)")
-            Pair(false, "LUN restore failed, backup kept for retry: ${res.err.joinToString("\n")}")
+            Pair(false, context.getString(R.string.msg_g1_restore_failed, res.err.joinToString("\n")))
         }
     }
 
@@ -341,7 +341,7 @@ object UsbGadgetController {
 
     fun mountImage(context: Context, pathOrUri: String, readOnly: Boolean, cdrom: Boolean): Pair<Boolean, String> {
         if (!isRootAvailable()) {
-            return Pair(false, "Root access not available")
+            return Pair(false, context.getString(R.string.err_no_root))
         }
 
         var resolvedPath = pathOrUri
@@ -352,7 +352,7 @@ object UsbGadgetController {
         val escapedPath = resolvedPath.replace("'", "'\\''")
         val existsCmd = Shell.cmd("if [ -f '$escapedPath' ]; then echo EXISTS; fi").exec()
         if (!existsCmd.out.contains("EXISTS")) {
-            return Pair(false, "Image file path does not exist: $resolvedPath")
+            return Pair(false, context.getString(R.string.err_file_missing, resolvedPath))
         }
 
         val roFlag = if (readOnly) "y" else "n"
@@ -391,7 +391,7 @@ object UsbGadgetController {
                 if (resDirect.isSuccess && resDirect.out.contains("DIRECT_SUCCESS")) {
                     // Save original USB config & toggle sys.usb.config to force Android init bus re-enumeration pulse
                     saveAndEnableMassStorageConfig(context)
-                    return Pair(true, "Successfully mounted via mass storage LUN ($lun)")
+                    return Pair(true, context.getString(R.string.msg_mounted_lun, lun))
                 }
             }
         }
@@ -433,14 +433,14 @@ object UsbGadgetController {
         logShell("Strategy 2 swy ConfigFS gadget", result1.code, result1.out, result1.err)
         if (result1.isSuccess && result1.out.contains("CONFIGFS_SUCCESS")) {
             saveAndEnableMassStorageConfig(context)
-            return Pair(true, "Successfully mounted via ConfigFS gadget")
+            return Pair(true, context.getString(R.string.msg_mounted_configfs))
         }
 
         val errReason = result1.err.joinToString("\n").ifEmpty {
             result1.out.joinToString("\n").ifEmpty { "Kernel rejected LUN file binding" }
         }
         AppLogger.e(TAG, "All mount strategies failed (exit code ${result1.code}): $errReason")
-        return Pair(false, "Failed to mount USB gadget (exit code ${result1.code}): $errReason")
+        return Pair(false, context.getString(R.string.msg_mount_failed, result1.code, errReason))
     }
 
     /**
@@ -454,12 +454,12 @@ object UsbGadgetController {
      */
     private fun mountViaOplusConfigfs(context: Context, escapedPath: String, roFlag: String, cdromFlag: String): Pair<Boolean, String> {
         val gadget = findG1GadgetDir()
-            ?: return Pair(false, "OPlus: usb_gadget/g1 not found on any configfs mount (/config, /sys/kernel/config)")
+            ?: return Pair(false, context.getString(R.string.err_gadget_not_found))
 
         val funcDir = "$gadget/functions/mass_storage.0"
         val hasFunc = Shell.cmd("[ -d '$funcDir/lun.0' ] && echo YES").exec().out.contains("YES")
         if (!hasFunc) {
-            return Pair(false, "OPlus: $funcDir/lun.0 missing (kernel built without CONFIG_USB_CONFIGFS_F_MASS_STORAGE?)")
+            return Pair(false, context.getString(R.string.err_ms_func_missing, funcDir))
         }
 
         // Backup original system configuration before any modification
@@ -521,7 +521,7 @@ object UsbGadgetController {
                 .apply()
             val confName = (parts.getOrNull(1) ?: "?").substringAfterLast('/')
             AppLogger.i(TAG, "OPlus mount succeeded: config=$confName, UDC=${parts.getOrNull(2) ?: "?"}")
-            return Pair(true, "Mounted via OPlus configfs (config $confName, UDC ${parts.getOrNull(2) ?: "?"})")
+            return Pair(true, context.getString(R.string.msg_mounted_oplus, confName, parts.getOrNull(2) ?: "?"))
         }
 
         val failLine = res.out.firstOrNull { it.startsWith("FAIL|") } ?: "no result"
@@ -532,7 +532,7 @@ object UsbGadgetController {
         }
         val detail = (listOf(failLine) + res.err + audit).filter { it.isNotBlank() }.joinToString("\n")
         AppLogger.e(TAG, "OPlus mount failed:\n$detail")
-        return Pair(false, "OPlus mount failed (unmount to restore original config): $detail")
+        return Pair(false, context.getString(R.string.msg_oplus_mount_failed, detail))
     }
 
     // =====================================================================
@@ -541,7 +541,7 @@ object UsbGadgetController {
 
     fun unmountImage(context: Context? = null): Pair<Boolean, String> {
         if (!isRootAvailable()) {
-            return Pair(false, "Root access not available")
+            return Pair(false, context.getString(R.string.err_no_root))
         }
 
         // Preferred path: restore from the snapshot taken before mounting
@@ -600,7 +600,7 @@ object UsbGadgetController {
      */
     private fun unmountViaOplusConfigfs(context: Context?): Pair<Boolean, String> {
         val gadget = findG1GadgetDir()
-            ?: return Pair(false, "OPlus: usb_gadget/g1 not found on any configfs mount")
+            ?: return Pair(false, context?.getString(R.string.err_gadget_not_found_short) ?: "OPlus: usb_gadget/g1 not found on any configfs mount")
 
         val funcDir = "$gadget/functions/mass_storage.0"
         val savedCtrl = context?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -635,10 +635,10 @@ object UsbGadgetController {
 
         return if (res.out.any { it.startsWith("UNMOUNT_OK") }) {
             AppLogger.i(TAG, "OPlus fallback unmount succeeded")
-            Pair(true, "Unmounted via OPlus configfs")
+            Pair(true, context?.getString(R.string.msg_unmounted_oplus) ?: "Unmounted via OPlus configfs")
         } else {
             val failLine = res.out.firstOrNull { it.startsWith("UNMOUNT_FAIL") } ?: ""
-            Pair(false, "OPlus unmount failed: $failLine ${res.err.joinToString("\n")}")
+            Pair(false, context?.getString(R.string.msg_oplus_unmount_failed, failLine, res.err.joinToString("\n")) ?: "OPlus unmount failed: $failLine ${res.err.joinToString("\n")}")
         }
     }
 
@@ -677,10 +677,10 @@ object UsbGadgetController {
         }
 
         return if (result.isSuccess) {
-            Pair(true, "Unmounted successfully")
+            Pair(true, context?.getString(R.string.msg_unmounted) ?: "Unmounted successfully")
         } else {
             val errText = result.err.joinToString("\n").ifEmpty { result.out.joinToString("\n").ifEmpty { "Exit code ${result.code}" } }
-            Pair(false, "Unmount failed (exit code ${result.code}): $errText")
+            Pair(false, context?.getString(R.string.msg_unmount_failed, result.code, errText) ?: "Unmount failed (exit code ${result.code}): $errText")
         }
     }
 

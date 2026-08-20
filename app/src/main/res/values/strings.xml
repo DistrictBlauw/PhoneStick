@@ -12,6 +12,8 @@
     <string name="status_mounted">MOUNTED</string>
     <string name="status_unmounted">UNMOUNTED</string>
     <string name="status_lun_path">LUN: %1$s</string>
+    <string name="lun_none">LUN: None</string>
+    <string name="select_disk_image">Select Disk Image</string>
     <string name="host_source_file">Selected Image</string>
     <string name="host_ro">Read-only mode</string>
     <string name="host_ro_summary">Prevent host PC from modifying the disk image</string>
@@ -24,19 +26,117 @@
     <string name="host_help">PhoneStick emulates a USB mass storage drive or virtual CD-ROM. Ensure root permission is granted and a compatible kernel is available.</string>
     <string name="imported_document">Imported Document</string>
 
+    <!-- Splash -->
+    <string name="splash_subtitle">USB Mass Storage Controller</string>
+    <string name="splash_checking_root">Verifying Root privileges…</string>
+    <string name="splash_root_required">Root Access Required</string>
+    <string name="splash_root_required_msg">PhoneStick requires Root access (Magisk, KernelSU, APatch) to write to USB Gadget LUN controllers and mount disk images.</string>
+    <string name="splash_grant_root">Grant / Retry Root Check</string>
+    <string name="splash_exit">Exit Application</string>
+
     <!-- ImageChooserActivity & Dialogs -->
     <string name="title_activity_image_chooser">Select or Create Disk Image</string>
     <string name="image_chooser_filesize_mib">%1$.1f MiB</string>
     <string name="image_chooser_add">Import Image</string>
+    <string name="badge_active">ACTIVE</string>
+    <string name="action_create_blank">Create Blank Image</string>
+    <string name="action_import_image">Import Image</string>
+    <string name="action_format_images">Format Image(s)</string>
+
     <string name="create_image_dialog_title">Create Blank Disk Image</string>
     <string name="create_image_name_hint">Image Name (e.g. boot.img)</string>
     <string name="create_image_size_hint">Size in MB (e.g. 512, 1024, 4096)</string>
+    <string name="preset_size_label">Select Size Preset:</string>
+    <string name="fs_format_label">Filesystem Format:</string>
+    <string name="fs_raw_blank">Raw Blank (No FS)</string>
+    <string name="fast_allocation">Fast Allocation (fallocate)</string>
     <string name="create_image_confirm">Create Image</string>
     <string name="cancel">Cancel</string>
+
+    <string name="menu_delete">Delete</string>
+    <string name="menu_mount_now">Mount Now</string>
+    <string name="menu_rename">Rename</string>
+    <string name="rename_image_title">Rename Image</string>
+    <string name="delete_image_title">Delete Image</string>
+    <string name="delete_confirm">Are you sure you want to delete \"%1$s\"?</string>
+    <string name="delete_confirm_active">\"%1$s\" is currently active. Deleting it will automatically unmount the USB drive and delete the file. Continue?</string>
+    <string name="removed_file">Removed %1$s</string>
+    <string name="unmounted_removed_file">Unmounted and removed %1$s</string>
+
+    <string name="invalid_image_title">Invalid Image File</string>
+    <string name="import_failed_not_exist">Import failed: File does not exist</string>
+    <string name="import_failed_not_file">Import failed: Selected path is not a regular file</string>
+    <string name="import_failed_empty">Import failed: Selected file is 0 bytes empty</string>
+    <string name="import_failed_bad_ext">Import failed: File extension \'%1$s\' is not a supported disk image format (.img, .iso, .bin, .raw, .vhd, .qcow2)</string>
+    <string name="import_failed_invalid">Import failed: Invalid disk image file</string>
+
+    <string name="notif_channel_name">Image Creation</string>
+    <string name="notif_channel_desc">Progress notifications for image creation</string>
+    <string name="notif_create_failed">Failed to create image: %1$s</string>
+    <string name="notif_created_title">Image Created Successfully</string>
+    <string name="notif_created_text">%1$s (%2$d MB) created.</string>
+    <string name="creating_image">Creating image…</string>
+    <string name="creating_image_title">Creating Image: %1$s</string>
+
+    <string name="name_empty_error">Name cannot be empty</string>
+    <string name="initializing_creation">Initializing image creation…</string>
+    <string name="image_creation_error">Image Creation Error</string>
+
+    <string name="no_image_files">No Image Files</string>
+    <string name="no_image_files_msg">There are no image files available to format.</string>
+    <string name="selected_count">Selected %1$d Image(s)</string>
+    <string name="select_images">Select Image(s)</string>
+    <string name="select_at_least_one_format">Select at least 1 image to format</string>
+    <string name="select_at_least_one_delete">Select at least 1 image to delete</string>
+    <string name="delete_n_images_title">Delete %1$d Image(s)</string>
+    <string name="delete_n_images_msg">Are you sure you want to delete %1$d selected image file(s)? This action cannot be undone.</string>
+    <string name="deleted_n_files">Deleted %1$d image file(s)</string>
+
+    <string name="choose_fs_format">Choose Filesystem Format</string>
+    <string name="format_n_files">Format (%1$d file(s))</string>
+    <string name="formatting_progress">Formatting %1$d/%2$d: %3$s…</string>
+    <string name="format_complete">Formatting Complete</string>
+    <string name="format_complete_msg">Successfully formatted %1$d file(s) as %2$s.</string>
+    <string name="format_cli_errors">Format CLI Errors</string>
+    <string name="format_completed_errors">Completed with errors:\n\n%1$s</string>
+
+    <!-- ImageCreator progress / result messages -->
+    <string name="creator_file_exists">File already exists: %1$s</string>
+    <string name="creator_allocating">Allocating file with fallocate…</string>
+    <string name="creator_alloc_done">Fast allocation complete</string>
+    <string name="creator_dd_progress">Creating image (dd)… %1$d MB / %2$d MB (%3$d%%)</string>
+    <string name="creator_create_failed">Failed to create image file: %1$s</string>
+    <string name="creator_formatting_fs">Formatting filesystem (%1$s)…</string>
+    <string name="creator_formatted_as"> Formatted as %1$s.</string>
+    <string name="creator_format_warn"> (Warning: mkfs %1$s failed: %2$s).</string>
+    <string name="creator_complete">Complete!</string>
+    <string name="creator_create_success">Successfully created image (%1$s).%2$s</string>
+    <string name="creator_formatting_file">Formatting %1$s as %2$s…</string>
+    <string name="creator_format_success">Successfully formatted %1$s as %2$s</string>
+    <string name="creator_format_failed">Failed to format %1$s as %2$s: %3$s</string>
 
     <!-- Error dialogs -->
     <string name="mount_error_title">Mount failed</string>
     <string name="unmount_error_title">Unmount failed</string>
+    <string name="err_no_root">Root access not available</string>
+    <string name="err_file_missing">Image file path does not exist: %1$s</string>
+    <string name="err_gadget_not_found">OPlus: usb_gadget/g1 not found on any configfs mount (/config, /sys/kernel/config)</string>
+    <string name="err_ms_func_missing">OPlus: %1$s/lun.0 missing (kernel built without CONFIG_USB_CONFIGFS_F_MASS_STORAGE?)</string>
+    <string name="err_backup_no_gadget">Backup has no gadget directory</string>
+    <string name="err_restore_failed">Restore failed, backup kept for retry: %1$s</string>
+    <string name="msg_mounted_lun">Successfully mounted via mass storage LUN (%1$s)</string>
+    <string name="msg_mounted_oplus">Mounted via OPlus configfs (config %1$s, UDC %2$s)</string>
+    <string name="msg_mounted_configfs">Successfully mounted via ConfigFS gadget</string>
+    <string name="msg_mount_failed">Failed to mount USB gadget (exit code %1$d): %2$s</string>
+    <string name="msg_oplus_mount_failed">OPlus mount failed (unmount to restore original config): %1$s</string>
+    <string name="msg_unmounted">Unmounted successfully</string>
+    <string name="msg_restored_oplus">Original USB configuration restored (UDC=%1$s)</string>
+    <string name="msg_restored_g1">Original LUN configuration restored</string>
+    <string name="msg_g1_restore_failed">LUN restore failed, backup kept for retry: %1$s</string>
+    <string name="msg_unmounted_oplus">Unmounted via OPlus configfs</string>
+    <string name="msg_oplus_unmount_failed">OPlus unmount failed: %1$s %2$s</string>
+    <string name="err_gadget_not_found_short">OPlus: usb_gadget/g1 not found on any configfs mount</string>
+    <string name="msg_unmount_failed">Unmount failed (exit code %1$d): %2$s</string>
 
     <!-- LogActivity -->
     <string name="log_title">Application Log</string>

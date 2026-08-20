@@ -1,0 +1,8 @@
+Complete Simplified Chinese (zh-CN) localization: image chooser,
+creation/formatting dialogs, notifications, root guard screen, error
+dialogs and all mount/unmount result messages are now translated.
+
+Fix language switcher links between the English and Chinese README.
+
+Fix a regression where gradle-wrapper.jar was missing from the source
+tarball.

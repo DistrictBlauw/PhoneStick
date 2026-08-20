@@ -12,6 +12,8 @@
     <string name="status_mounted">已挂载</string>
     <string name="status_unmounted">未挂载</string>
     <string name="status_lun_path">LUN：%1$s</string>
+    <string name="lun_none">LUN：无</string>
+    <string name="select_disk_image">选择磁盘镜像</string>
     <string name="host_source_file">已选镜像</string>
     <string name="host_ro">只读模式</string>
     <string name="host_ro_summary">防止主机 PC 修改磁盘镜像</string>
@@ -24,19 +26,117 @@
     <string name="host_help">PhoneStick 可将手机模拟为 USB 大容量存储设备或虚拟光驱。请确保已授予 Root 权限且内核支持相关功能。</string>
     <string name="imported_document">导入的文件</string>
 
+    <!-- Splash -->
+    <string name="splash_subtitle">USB 大容量存储控制器</string>
+    <string name="splash_checking_root">正在验证 Root 权限……</string>
+    <string name="splash_root_required">需要 Root 权限</string>
+    <string name="splash_root_required_msg">PhoneStick 需要 Root 权限（Magisk、KernelSU、APatch）才能写入 USB Gadget LUN 控制器并挂载磁盘镜像。</string>
+    <string name="splash_grant_root">授予 / 重试 Root 检测</string>
+    <string name="splash_exit">退出应用</string>
+
     <!-- ImageChooserActivity & Dialogs -->
     <string name="title_activity_image_chooser">选择或创建磁盘镜像</string>
     <string name="image_chooser_filesize_mib">%1$.1f MiB</string>
     <string name="image_chooser_add">导入镜像</string>
+    <string name="badge_active">使用中</string>
+    <string name="action_create_blank">创建空白镜像</string>
+    <string name="action_import_image">导入镜像</string>
+    <string name="action_format_images">格式化镜像</string>
+
     <string name="create_image_dialog_title">创建空白磁盘镜像</string>
     <string name="create_image_name_hint">镜像名称（如 boot.img）</string>
     <string name="create_image_size_hint">大小（MB，如 512、1024、4096）</string>
+    <string name="preset_size_label">选择预设大小：</string>
+    <string name="fs_format_label">文件系统格式：</string>
+    <string name="fs_raw_blank">空白原始（无文件系统）</string>
+    <string name="fast_allocation">快速分配（fallocate）</string>
     <string name="create_image_confirm">创建镜像</string>
     <string name="cancel">取消</string>
+
+    <string name="menu_delete">删除</string>
+    <string name="menu_mount_now">立即挂载</string>
+    <string name="menu_rename">重命名</string>
+    <string name="rename_image_title">重命名镜像</string>
+    <string name="delete_image_title">删除镜像</string>
+    <string name="delete_confirm">确定要删除“%1$s”吗？</string>
+    <string name="delete_confirm_active">“%1$s”正在使用中。删除它将自动卸载 USB 驱动器并删除该文件。是否继续？</string>
+    <string name="removed_file">已移除 %1$s</string>
+    <string name="unmounted_removed_file">已卸载并移除 %1$s</string>
+
+    <string name="invalid_image_title">无效的镜像文件</string>
+    <string name="import_failed_not_exist">导入失败：文件不存在</string>
+    <string name="import_failed_not_file">导入失败：所选路径不是常规文件</string>
+    <string name="import_failed_empty">导入失败：所选文件为 0 字节空文件</string>
+    <string name="import_failed_bad_ext">导入失败：扩展名“%1$s”不是受支持的磁盘镜像格式（.img、.iso、.bin、.raw、.vhd、.qcow2）</string>
+    <string name="import_failed_invalid">导入失败：无效的磁盘镜像文件</string>
+
+    <string name="notif_channel_name">镜像创建</string>
+    <string name="notif_channel_desc">镜像创建的进度通知</string>
+    <string name="notif_create_failed">创建镜像失败：%1$s</string>
+    <string name="notif_created_title">镜像创建成功</string>
+    <string name="notif_created_text">%1$s（%2$d MB）已创建。</string>
+    <string name="creating_image">正在创建镜像……</string>
+    <string name="creating_image_title">正在创建镜像：%1$s</string>
+
+    <string name="name_empty_error">名称不能为空</string>
+    <string name="initializing_creation">正在初始化镜像创建……</string>
+    <string name="image_creation_error">镜像创建错误</string>
+
+    <string name="no_image_files">无镜像文件</string>
+    <string name="no_image_files_msg">没有可格式化的镜像文件。</string>
+    <string name="selected_count">已选择 %1$d 个镜像</string>
+    <string name="select_images">选择镜像</string>
+    <string name="select_at_least_one_format">请至少选择 1 个镜像进行格式化</string>
+    <string name="select_at_least_one_delete">请至少选择 1 个镜像进行删除</string>
+    <string name="delete_n_images_title">删除 %1$d 个镜像</string>
+    <string name="delete_n_images_msg">确定要删除选中的 %1$d 个镜像文件吗？此操作无法撤销。</string>
+    <string name="deleted_n_files">已删除 %1$d 个镜像文件</string>
+
+    <string name="choose_fs_format">选择文件系统格式</string>
+    <string name="format_n_files">格式化（%1$d 个文件）</string>
+    <string name="formatting_progress">正在格式化 %1$d/%2$d：%3$s……</string>
+    <string name="format_complete">格式化完成</string>
+    <string name="format_complete_msg">已成功将 %1$d 个文件格式化为 %2$s。</string>
+    <string name="format_cli_errors">格式化 CLI 错误</string>
+    <string name="format_completed_errors">完成，但存在错误：\n\n%1$s</string>
+
+    <!-- ImageCreator progress / result messages -->
+    <string name="creator_file_exists">文件已存在：%1$s</string>
+    <string name="creator_allocating">正在使用 fallocate 分配文件……</string>
+    <string name="creator_alloc_done">快速分配完成</string>
+    <string name="creator_dd_progress">正在创建镜像（dd）……%1$d MB / %2$d MB（%3$d%%）</string>
+    <string name="creator_create_failed">创建镜像文件失败：%1$s</string>
+    <string name="creator_formatting_fs">正在格式化文件系统（%1$s）……</string>
+    <string name="creator_formatted_as"> 已格式化为 %1$s。</string>
+    <string name="creator_format_warn">（警告：mkfs %1$s 失败：%2$s）。</string>
+    <string name="creator_complete">完成！</string>
+    <string name="creator_create_success">成功创建镜像（%1$s）。%2$s</string>
+    <string name="creator_formatting_file">正在将 %1$s 格式化为 %2$s……</string>
+    <string name="creator_format_success">已成功将 %1$s 格式化为 %2$s</string>
+    <string name="creator_format_failed">将 %1$s 格式化为 %2$s 失败：%3$s</string>
 
     <!-- Error dialogs -->
     <string name="mount_error_title">挂载失败</string>
     <string name="unmount_error_title">卸载失败</string>
+    <string name="err_no_root">Root 权限不可用</string>
+    <string name="err_file_missing">镜像文件路径不存在：%1$s</string>
+    <string name="err_gadget_not_found">OPlus：在任何 configfs 挂载点上都找不到 usb_gadget/g1（/config、/sys/kernel/config）</string>
+    <string name="err_ms_func_missing">OPlus：%1$s/lun.0 不存在（内核可能未启用 CONFIG_USB_CONFIGFS_F_MASS_STORAGE？）</string>
+    <string name="err_backup_no_gadget">备份中没有 gadget 目录</string>
+    <string name="err_restore_failed">还原失败，备份已保留以便重试：%1$s</string>
+    <string name="msg_mounted_lun">已通过 mass storage LUN 成功挂载（%1$s）</string>
+    <string name="msg_mounted_oplus">已通过 OPlus configfs 挂载（config %1$s，UDC %2$s）</string>
+    <string name="msg_mounted_configfs">已通过 ConfigFS gadget 成功挂载</string>
+    <string name="msg_mount_failed">挂载 USB gadget 失败（退出码 %1$d）：%2$s</string>
+    <string name="msg_oplus_mount_failed">OPlus 挂载失败（卸载即可还原原始配置）：%1$s</string>
+    <string name="msg_unmounted">卸载成功</string>
+    <string name="msg_restored_oplus">原始 USB 配置已还原（UDC=%1$s）</string>
+    <string name="msg_restored_g1">原始 LUN 配置已还原</string>
+    <string name="msg_g1_restore_failed">LUN 还原失败，备份已保留以便重试：%1$s</string>
+    <string name="msg_unmounted_oplus">已通过 OPlus configfs 卸载</string>
+    <string name="msg_oplus_unmount_failed">OPlus 卸载失败：%1$s %2$s</string>
+    <string name="err_gadget_not_found_short">OPlus：在任何 configfs 挂载点上都找不到 usb_gadget/g1</string>
+    <string name="msg_unmount_failed">卸载失败（退出码 %1$d）：%2$s</string>
 
     <!-- LogActivity -->
     <string name="log_title">应用日志</string>

@@ -34,7 +34,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="USB Mass Storage Controller"
+            android:text="@string/splash_subtitle"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -57,7 +57,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Verifying Root privileges..."
+                android:text="@string/splash_checking_root"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
         </LinearLayout>
@@ -90,7 +90,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="Root Access Required"
+                    android:text="@string/splash_root_required"
                     android:textAppearance="?attr/textAppearanceTitleMedium"
                     android:textColor="@color/status_unmounted"
                     android:textStyle="bold" />
@@ -100,7 +100,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:gravity="center"
-                    android:text="PhoneStick requires Root access (Magisk, KernelSU, APatch) to write to USB Gadget LUN controllers and mount disk images."
+                    android:text="@string/splash_root_required_msg"
                     android:textAppearance="?attr/textAppearanceBodySmall"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -109,7 +109,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
-                    android:text="Grant / Retry Root Check" />
+                    android:text="@string/splash_grant_root" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnExitApp"
@@ -117,7 +117,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Exit Application" />
+                    android:text="@string/splash_exit" />
 
             </LinearLayout>
 

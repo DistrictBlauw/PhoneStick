@@ -74,7 +74,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="LUN: None"
+                        android:text="@string/lun_none"
                         android:textAppearance="?attr/textAppearanceBodySmall" />
 
                 </LinearLayout>
@@ -131,7 +131,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:text="Select Disk Image"
+                        android:text="@string/select_disk_image"
                         app:icon="@drawable/ic_sd_storage_vector" />
 
                 </LinearLayout>
