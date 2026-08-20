@@ -541,7 +541,7 @@ object UsbGadgetController {
 
     fun unmountImage(context: Context? = null): Pair<Boolean, String> {
         if (!isRootAvailable()) {
-            return Pair(false, context.getString(R.string.err_no_root))
+            return Pair(false, context?.getString(R.string.err_no_root) ?: "Root access not available")
         }
 
         // Preferred path: restore from the snapshot taken before mounting

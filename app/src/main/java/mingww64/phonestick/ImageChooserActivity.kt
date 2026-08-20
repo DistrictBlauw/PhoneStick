@@ -744,7 +744,7 @@ class ImageChooserActivity : AppCompatActivity() {
 
     private suspend fun suspendFormatImage(file: File, format: String): Pair<Boolean, String> =
         suspendCancellableCoroutine { continuation ->
-            ImageCreator.formatExistingImage(this, format, onProgressStatus = {}) { success, msg ->
+            ImageCreator.formatExistingImage(this, file, format, onProgressStatus = {}) { success, msg ->
                 if (continuation.isActive) {
                     continuation.resume(Pair(success, msg))
                 }
