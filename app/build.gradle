@@ -11,8 +11,8 @@ android {
         applicationId "mingww64.phonestick"
         minSdk 24
         targetSdk 34
-        versionCode 16
-        versionName "2.6.1"
+        versionCode 17
+        versionName "2.6.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

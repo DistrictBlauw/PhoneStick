@@ -240,9 +240,7 @@ class ImageChooserActivity : AppCompatActivity() {
             }
             
             removeExternalImagePath(file.absolutePath)
-            if (file.exists()) {
-                file.delete()
-            }
+            RootFileOps.delete(file.absolutePath)
 
             withContext(Dispatchers.Main) {
                 setLoading(false)
@@ -284,10 +282,15 @@ class ImageChooserActivity : AppCompatActivity() {
             val externalFiles = validExternalPaths.map { File(it) }.filter { isValidImageExtension(it.extension) }
             val combined = (internalFiles + externalFiles).distinctBy { it.absolutePath }
 
+            // Prefetch sizes via root in one shell call: file.length() is 0 for
+            // root-only paths such as /data/media/0 (imported images).
+            val sizes = RootFileOps.statSizes(combined.map { it.absolutePath })
+
             withContext(Dispatchers.Main) {
                 imageFiles.clear()
                 imageFiles.addAll(combined)
                 if (::adapter.isInitialized) {
+                    adapter.sizeCache.putAll(sizes)
                     adapter.notifyDataSetChanged()
                 }
             }
@@ -653,9 +656,7 @@ class ImageChooserActivity : AppCompatActivity() {
                     }
                 }
                 removeExternalImagePath(file.absolutePath)
-                if (file.exists()) {
-                    file.delete()
-                }
+                RootFileOps.delete(file.absolutePath)
             }
 
             withContext(Dispatchers.Main) {

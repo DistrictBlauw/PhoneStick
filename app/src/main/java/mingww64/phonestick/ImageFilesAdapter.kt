@@ -32,6 +32,9 @@ class ImageFilesAdapter(
     var onSelectionCountChanged: (Int) -> Unit = {}
     var onFileLongClick: ((File) -> Unit)? = null
 
+    /** Absolute path -> size in bytes, prefetched via root for root-only paths. */
+    val sizeCache = mutableMapOf<String, Long>()
+
     inner class ViewHolder(val binding: ImageChooserRowBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -46,7 +49,7 @@ class ImageFilesAdapter(
         val context = holder.itemView.context
 
         holder.binding.filename.text = file.name
-        holder.binding.fileSize.text = formatFileSize(file.length())
+        holder.binding.fileSize.text = formatFileSize(sizeCache[file.absolutePath] ?: file.length())
 
         if (file.extension.equals("iso", ignoreCase = true)) {
             holder.binding.ivFileIcon.setImageResource(R.drawable.ic_disc_vector)
@@ -140,7 +143,7 @@ class ImageFilesAdapter(
                 val newName = input.text.toString().trim()
                 if (newName.isNotEmpty() && newName != file.name) {
                     val newFile = File(file.parentFile, newName)
-                    if (file.renameTo(newFile)) {
+                    if (RootFileOps.rename(file.absolutePath, newFile.absolutePath)) {
                         onFileRenamed(file, newFile)
                     }
                 }

@@ -22,6 +22,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var selectedImagePath: String = ""
     private var isCurrentlyMounted: Boolean = false
+    private var cachedImageName: String = ""
+    private var cachedImageSize: Long = 0L
 
     companion object {
         private const val TAG = "MainActivity"
@@ -120,12 +122,25 @@ class MainActivity : AppCompatActivity() {
                     "ro=${status.isReadOnly}, cdrom=${status.isCdrom}, lun=${status.lunPath}"
             )
             
-            // Check if stored image file still exists
+            // Check if stored image file still exists. Imported images may sit on
+            // root-only paths (/data/media, /mnt/pass_through) invisible to the
+            // app process, so fall back to a root shell check.
             if (selectedImagePath.isNotEmpty() && !selectedImagePath.startsWith("content://")) {
-                if (!File(selectedImagePath).exists()) {
+                if (!RootFileOps.exists(selectedImagePath)) {
+                    AppLogger.w(TAG, "Selected image no longer exists, clearing: $selectedImagePath")
                     selectedImagePath = ""
                     saveSelectedImagePath("")
                 }
+            }
+
+            // Precompute display name/size on the IO thread: file.length() is 0
+            // for root-only paths, so use the root-aware size lookup.
+            if (selectedImagePath.isNotEmpty() && !selectedImagePath.startsWith("content://")) {
+                cachedImageName = File(selectedImagePath).name
+                cachedImageSize = RootFileOps.length(selectedImagePath)
+            } else {
+                cachedImageName = ""
+                cachedImageSize = 0L
             }
 
             withContext(Dispatchers.Main) {
@@ -162,10 +177,10 @@ class MainActivity : AppCompatActivity() {
                 binding.tvSelectedPath.text = decoded
             } else {
                 val file = File(selectedImagePath)
-                if (file.exists()) {
-                    binding.tvSelectedFileName.text = file.name
-                    val sizeStr = formatFileSize(file.length())
-                    binding.tvSelectedPath.text = "$sizeStr • ${file.parent ?: ""}"
+                if (cachedImageSize > 0 || file.exists()) {
+                    binding.tvSelectedFileName.text = cachedImageName.ifEmpty { file.name }
+                    val size = if (cachedImageSize > 0) cachedImageSize else file.length()
+                    binding.tvSelectedPath.text = "${formatFileSize(size)} • ${file.parent ?: ""}"
                 } else {
                     binding.tvSelectedFileName.text = getString(R.string.file_picker_nofile)
                     binding.tvSelectedPath.text = ""
