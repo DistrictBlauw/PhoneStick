@@ -46,13 +46,24 @@ PhoneStick 基于 Android 内核的 ConfigFS 与 USB gadget 驱动，把已 Root
 
 ColorOS 把 configfs 挂载在 `/config`，并预创建了带 `mass_storage.0` 功能实例的
 `usb_gadget/g1`，但其 init 从不会把 `mass_storage` 编排进 `sys.usb.config`，
-因此经典的 `setprop` 切换完全无效。PhoneStick 的做法是：
+因此经典的 `setprop` 切换完全无效。更麻烦的是，ColorOS 的 USB HAL 时刻盯着
+`g1`：外部一旦改动它的组合，几秒内就会被重置回 MTP——这正是“挂载后 PC 端
+先看到设备、几秒后又变回 MTP”的原因。
 
-1. 读取当前 UDC（`sys.usb.controller`，如 `a600000.dwc3`）并把 `g1` 从其上解绑。
-2. 填充 `functions/mass_storage.0/lun.0`（`file`、`ro`、`cdrom`、`removable`、`stall`）。
-3. 把 `functions/mass_storage.0` 软链接进当前激活的 config（`configs/b.1`），
-   ADB/MTP 作为复合设备继续可用。
-4. 重新绑定 UDC，主机重新枚举后即可看到磁盘。
+因此 PhoneStick 改为创建一个 **HAL 不认识的独立 gadget**（`usb_gadget/pstick`），
+由它接管 UDC：
+
+1. 解析当前 UDC（`sys.usb.controller`，如 `a600000.dwc3`），并对 `g1` 的
+   UDC 绑定做快照。
+2. 创建 `pstick`：独立的 VID/PID、设备字符串、`configs/c.1` 以及
+   `functions/mass_storage.0` LUN（`file`、`ro`、`cdrom`、`removable`、`stall`）。
+3. 把 `g1` 从 UDC 解绑，再将 UDC 绑给 `pstick`（带重试，防止 HAL 抢绑）。
+   `g1` 本身自始至终不被修改。
+4. 主机重新枚举出一个纯 mass-storage 设备，HAL 没有任何句柄可以重置它。
+   卸载后 USB 上的 MTP/ADB 自动恢复。
+
+如果内核拒绝创建新 gadget 目录（受限 configfs），应用会自动回退为直接在
+`g1` 上编排 mass storage 的旧方案。
 
 如果你的 OPlus 版本在 SELinux Enforcing 下拒绝 root 写 configfs，应用只会在写入
 LUN 的瞬间临时切换到 permissive，写入完成后立即恢复 enforcing。

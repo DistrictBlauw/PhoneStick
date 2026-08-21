@@ -122,10 +122,15 @@
     <string name="err_file_missing">Image file path does not exist: %1$s</string>
     <string name="err_gadget_not_found">OPlus: usb_gadget/g1 not found on any configfs mount (/config, /sys/kernel/config)</string>
     <string name="err_ms_func_missing">OPlus: %1$s/lun.0 missing (kernel built without CONFIG_USB_CONFIGFS_F_MASS_STORAGE?)</string>
+    <string name="err_no_udc">No USB device controller (UDC) found</string>
     <string name="err_backup_no_gadget">Backup has no gadget directory</string>
     <string name="err_restore_failed">Restore failed, backup kept for retry: %1$s</string>
     <string name="msg_mounted_lun">Successfully mounted via mass storage LUN (%1$s)</string>
     <string name="msg_mounted_oplus">Mounted via OPlus configfs (config %1$s, UDC %2$s)</string>
+    <string name="msg_mounted_pstick">Mounted via dedicated gadget (UDC %1$s). A new USB drive should appear on the PC; MTP/ADB over USB resumes after unmount.</string>
+    <string name="msg_pstick_mount_failed">Dedicated gadget mount failed: %1$s</string>
+    <string name="msg_pstick_unmount_failed">Dedicated gadget unmount failed: %1$s</string>
+    <string name="msg_unmounted_pstick">Unmounted: dedicated gadget removed and original USB configuration restored</string>
     <string name="msg_mounted_configfs">Successfully mounted via ConfigFS gadget</string>
     <string name="msg_mount_failed">Failed to mount USB gadget (exit code %1$d): %2$s</string>
     <string name="msg_oplus_mount_failed">OPlus mount failed (unmount to restore original config): %1$s</string>

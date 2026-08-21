@@ -122,10 +122,15 @@
     <string name="err_file_missing">镜像文件路径不存在：%1$s</string>
     <string name="err_gadget_not_found">OPlus：在任何 configfs 挂载点上都找不到 usb_gadget/g1（/config、/sys/kernel/config）</string>
     <string name="err_ms_func_missing">OPlus：%1$s/lun.0 不存在（内核可能未启用 CONFIG_USB_CONFIGFS_F_MASS_STORAGE？）</string>
+    <string name="err_no_udc">未找到 USB 设备控制器（UDC）</string>
     <string name="err_backup_no_gadget">备份中没有 gadget 目录</string>
     <string name="err_restore_failed">还原失败，备份已保留以便重试：%1$s</string>
     <string name="msg_mounted_lun">已通过 mass storage LUN 成功挂载（%1$s）</string>
     <string name="msg_mounted_oplus">已通过 OPlus configfs 挂载（config %1$s，UDC %2$s）</string>
+    <string name="msg_mounted_pstick">已通过独立 gadget 挂载（UDC %1$s）。PC 端将显示新的 USB 存储设备；卸载后 MTP/ADB 自动恢复。</string>
+    <string name="msg_pstick_mount_failed">独立 gadget 挂载失败：%1$s</string>
+    <string name="msg_pstick_unmount_failed">独立 gadget 卸载失败：%1$s</string>
+    <string name="msg_unmounted_pstick">已卸载：独立 gadget 已移除，原始 USB 配置已恢复</string>
     <string name="msg_mounted_configfs">已通过 ConfigFS gadget 成功挂载</string>
     <string name="msg_mount_failed">挂载 USB gadget 失败（退出码 %1$d）：%2$s</string>
     <string name="msg_oplus_mount_failed">OPlus 挂载失败（卸载即可还原原始配置）：%1$s</string>

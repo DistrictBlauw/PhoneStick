@@ -20,6 +20,9 @@ object UsbGadgetController {
     private const val KEY_USB_CONTROLLER = "usb_controller"
     private const val KEY_GADGET_BACKUP = "gadget_backup"
 
+    /** Name of the dedicated gadget we create to take over the UDC on ColorOS. */
+    private const val PS_GADGET_NAME = "pstick"
+
     data class MountStatus(
         val isMounted: Boolean = false,
         val currentFile: String = "",
@@ -359,9 +362,14 @@ object UsbGadgetController {
         val cdromFlag = if (cdrom) "y" else "n"
         AppLogger.i(TAG, "mountImage: path=$resolvedPath, readOnly=$readOnly, cdrom=$cdrom")
 
-        // Strategy 0 (OPlus): direct configfs composition, no sys.usb.config involved
+        // Strategy 0 (OPlus): dedicated gadget takes over the UDC so the ColorOS
+        // USB HAL cannot reset the composition back to MTP; classic g1
+        // composition remains as a fallback for restricted kernels.
         if (isOplusDevice()) {
-            AppLogger.i(TAG, "Strategy: OPlus direct configfs")
+            AppLogger.i(TAG, "Strategy: OPlus independent gadget (pstick)")
+            val indep = mountViaIndependentGadget(context, escapedPath, roFlag, cdromFlag)
+            if (indep.first) return indep
+            AppLogger.w(TAG, "Independent gadget failed (${indep.second}); falling back to g1 composition")
             return mountViaOplusConfigfs(context, escapedPath, roFlag, cdromFlag)
         }
 
@@ -441,6 +449,196 @@ object UsbGadgetController {
         }
         AppLogger.e(TAG, "All mount strategies failed (exit code ${result1.code}): $errReason")
         return Pair(false, context.getString(R.string.msg_mount_failed, result1.code, errReason))
+    }
+
+    // =====================================================================
+    // Independent gadget strategy (fix for ColorOS resetting g1 to MTP)
+    // =====================================================================
+
+    /**
+     * The ColorOS USB HAL owns the pre-created g1 gadget and rewrites its
+     * composition whenever it deviates from sys.usb.config: a few seconds
+     * after we add mass_storage to g1 the HAL strips the link and the PC
+     * falls back to MTP. Instead we create our own gadget (pstick) which the
+     * HAL does not know about, let it take over the UDC, and never touch g1
+     * except for detaching it. g1 keeps its full configuration and is simply
+     * re-bound on unmount, returning the phone to its original state.
+     */
+    private fun mountViaIndependentGadget(context: Context, escapedPath: String, roFlag: String, cdromFlag: String): Pair<Boolean, String> {
+        val g1 = findG1GadgetDir()
+            ?: return Pair(false, context.getString(R.string.err_gadget_not_found))
+        val ps = "${g1.substringBeforeLast("/")}/$PS_GADGET_NAME"
+
+        val ctrl = resolveUsbController()
+        if (ctrl.isBlank()) {
+            return Pair(false, context.getString(R.string.err_no_udc))
+        }
+
+        // Snapshot only what we change: g1's UDC binding (g1 itself is never modified)
+        val curUdc = Shell.cmd("cat '$g1/UDC' 2>/dev/null").exec().out.firstOrNull()?.trim() ?: ""
+        val udcBackup = curUdc.ifBlank { ctrl }
+        storeIndependentBackup(context, g1, udcBackup)
+
+        val script = arrayOf(
+            // teardown leftover instance from a previous crashed run (idempotent)
+            "if [ -d '$ps' ]; then",
+            "  echo '' > '$ps/UDC' 2>/dev/null || true",
+            "  echo '' > '$ps/functions/mass_storage.0/lun.0/file' 2>/dev/null || true",
+            "  rm -f '$ps/configs/c.1/mass_storage.0' 2>/dev/null || true",
+            "  rmdir '$ps/configs/c.1/strings/0x409' '$ps/configs/c.1' '$ps/functions/mass_storage.0' '$ps/strings/0x409' '$ps' 2>/dev/null || true",
+            "fi",
+            // create the gadget (kernel instantiates default groups + attributes)
+            "mkdir '$ps' 2>/dev/null || true",
+            "mkdir '$ps/strings/0x409' 2>/dev/null || true",
+            "mkdir '$ps/configs/c.1' 2>/dev/null || true",
+            "mkdir '$ps/configs/c.1/strings/0x409' 2>/dev/null || true",
+            "mkdir '$ps/functions/mass_storage.0' 2>/dev/null || true",
+            "RC=0",
+            "[ -d '$ps/functions/mass_storage.0/lun.0' ] || RC=1",
+            "[ -d '$ps/configs/c.1' ] || RC=1",
+            "if [ \"\$RC\" = 0 ]; then",
+            "  echo 0x0525 > '$ps/idVendor' 2>/dev/null || true",
+            "  echo 0xa4a5 > '$ps/idProduct' 2>/dev/null || true",
+            "  echo 0x0100 > '$ps/bcdDevice' 2>/dev/null || true",
+            "  echo PhoneStick > '$ps/strings/0x409/manufacturer' 2>/dev/null || true",
+            "  echo 'PhoneStick Drive' > '$ps/strings/0x409/product' 2>/dev/null || true",
+            "  echo phonestick > '$ps/strings/0x409/serialnumber' 2>/dev/null || true",
+            "  echo 500 > '$ps/configs/c.1/MaxPower' 2>/dev/null || true",
+            "  echo 'Mass Storage' > '$ps/configs/c.1/strings/0x409/configuration' 2>/dev/null || true",
+            "  echo 1 > '$ps/functions/mass_storage.0/stall' 2>/dev/null || true",
+            "  echo y > '$ps/functions/mass_storage.0/lun.0/removable' 2>/dev/null || true",
+            "  echo '$roFlag' > '$ps/functions/mass_storage.0/lun.0/ro' 2>/dev/null || true",
+            "  echo '$cdromFlag' > '$ps/functions/mass_storage.0/lun.0/cdrom' 2>/dev/null || true",
+            "  echo '$escapedPath' > '$ps/functions/mass_storage.0/lun.0/file' 2>/dev/null || true",
+            // SELinux fallback: some OPlus builds deny configfs writes even to root
+            "  if [ -z \"\$(cat '$ps/functions/mass_storage.0/lun.0/file' 2>/dev/null)\" ] && [ \"\$(getenforce 2>/dev/null)\" = Enforcing ]; then",
+            "    setenforce 0 2>/dev/null || true",
+            "    echo '$escapedPath' > '$ps/functions/mass_storage.0/lun.0/file' 2>/dev/null || true",
+            "    setenforce 1 2>/dev/null || true",
+            "  fi",
+            "  ln -s '$ps/functions/mass_storage.0' '$ps/configs/c.1/mass_storage.0' 2>/dev/null || true",
+            // detach g1 and hand the UDC to pstick (retry: the HAL may race us)
+            "  TRY=0",
+            "  while [ \"\$RC\" = 0 ] && [ \$TRY -lt 5 ]; do",
+            "    echo '' > '$g1/UDC' 2>/dev/null || true",
+            "    if echo '$ctrl' > '$ps/UDC' 2>/dev/null; then",
+            "      sleep 1",
+            "      [ \"\$(cat '$ps/UDC' 2>/dev/null)\" = '$ctrl' ] && break",
+            "    else",
+            "      sleep 1",
+            "    fi",
+            "    TRY=\$((TRY+1))",
+            "  done",
+            "fi",
+            "sleep 1",
+            "LUNVAL=\$(cat '$ps/functions/mass_storage.0/lun.0/file' 2>/dev/null)",
+            "UDCVAL=\$(cat '$ps/UDC' 2>/dev/null)",
+            "if [ -n \"\$LUNVAL\" ] && [ \"\$UDCVAL\" = '$ctrl' ]; then",
+            "  echo 'OK|$ctrl'",
+            "else",
+            // give the UDC back to g1 so the system is not left without USB
+            "  echo '$udcBackup' > '$g1/UDC' 2>/dev/null || true",
+            "  echo \"FAIL|\$UDCVAL|\$LUNVAL\"",
+            "fi"
+        )
+
+        val res = Shell.cmd(*script).exec()
+        logShell("Independent gadget mount script", res.code, res.out, res.err)
+        val okLine = res.out.firstOrNull { it.startsWith("OK|") }
+        if (okLine != null) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean(KEY_DIRECT_MODE, true)
+                .putString(KEY_USB_CONTROLLER, ctrl)
+                .remove(KEY_ORIG_USB_CONFIG) // this mode never touches sys.usb.config
+                .apply()
+            AppLogger.i(TAG, "Independent gadget mounted: pstick holds UDC $ctrl (g1 detached, snapshot kept)")
+            return Pair(true, context.getString(R.string.msg_mounted_pstick, ctrl))
+        }
+
+        // Failure: drop our snapshot so the g1-composition fallback can record its own
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_GADGET_BACKUP).apply()
+        val failLine = res.out.firstOrNull { it.startsWith("FAIL|") } ?: "no result"
+        val detail = (listOf(failLine) + res.err).filter { it.isNotBlank() }.joinToString("\n")
+        AppLogger.e(TAG, "Independent gadget mount failed:\n$detail")
+        return Pair(false, context.getString(R.string.msg_pstick_mount_failed, detail))
+    }
+
+    /** Resolve the UDC name: sys.usb.controller -> vendor.usb.controller -> /sys/class/udc. */
+    private fun resolveUsbController(): String {
+        val res = Shell.cmd(
+            "CTRL=\$(getprop sys.usb.controller)",
+            "[ -z \"\$CTRL\" ] && CTRL=\$(getprop vendor.usb.controller)",
+            "[ -z \"\$CTRL\" ] && CTRL=\$(ls /sys/class/udc 2>/dev/null | head -n1)",
+            "[ -n \"\$CTRL\" ] && echo \"\$CTRL\""
+        ).exec()
+        val ctrl = res.out.firstOrNull()?.trim() ?: ""
+        AppLogger.i(TAG, "UDC resolved: ${ctrl.ifBlank { "none" }}")
+        return ctrl
+    }
+
+    /** Minimal snapshot for the independent strategy: only g1's UDC binding. */
+    private fun storeIndependentBackup(context: Context, g1: String, udc: String) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.contains(KEY_GADGET_BACKUP)) {
+            AppLogger.w(TAG, "A gadget backup already exists; keeping the older snapshot")
+            return
+        }
+        val json = JSONObject()
+            .put("mode", "independent")
+            .put("gadget", g1)
+            .put("udc", udc)
+            .put("links", JSONArray())
+            .put("luns", JSONArray())
+            .put("stalls", JSONArray())
+        prefs.edit().putString(KEY_GADGET_BACKUP, json.toString()).apply()
+        AppLogger.i(TAG, "Independent backup stored (gadget=$g1, udc=$udc)")
+    }
+
+    /** Remove the pstick gadget entirely (idempotent). Returns true when gone. */
+    private fun teardownPstick(g1: String): Boolean {
+        val ps = "${g1.substringBeforeLast("/")}/$PS_GADGET_NAME"
+        val res = Shell.cmd(
+            "if [ -d '$ps' ]; then",
+            "  echo '' > '$ps/UDC' 2>/dev/null || true",
+            "  sleep 1",
+            "  rm -f '$ps/configs/c.1/mass_storage.0' 2>/dev/null || true",
+            "  rmdir '$ps/configs/c.1/strings/0x409' '$ps/configs/c.1' '$ps/functions/mass_storage.0' '$ps/strings/0x409' '$ps' 2>/dev/null || true",
+            "fi",
+            "if [ -d '$ps' ]; then echo STILL_THERE; else echo GONE; fi"
+        ).exec()
+        logShell("pstick teardown", res.code, res.out, res.err)
+        val gone = res.out.any { it.trim() == "GONE" }
+        if (!gone) AppLogger.w(TAG, "pstick gadget could not be removed completely")
+        return gone
+    }
+
+    /** Restore the independent-gadget snapshot: remove pstick, rebind g1. */
+    private fun restoreIndependentBackup(context: Context, json: JSONObject): Pair<Boolean, String> {
+        val g1 = json.optString("gadget")
+        val udc = json.optString("udc")
+        if (g1.isBlank()) return Pair(false, context.getString(R.string.err_backup_no_gadget))
+        AppLogger.i(TAG, "Restoring independent-gadget backup: g1=$g1, udc=$udc")
+
+        val gone = teardownPstick(g1)
+        var bound = true
+        if (udc.isNotBlank()) {
+            val res = Shell.cmd(
+                "echo '$udc' > '$g1/UDC' 2>/dev/null || true",
+                "sleep 1",
+                "cat '$g1/UDC' 2>/dev/null"
+            ).exec()
+            logShell("g1 UDC rebind", res.code, res.out, res.err)
+            bound = res.out.firstOrNull()?.trim() == udc
+        }
+
+        return if (gone && bound) {
+            clearBackupKeys(context)
+            AppLogger.i(TAG, "Independent unmount complete (g1 rebound to $udc)")
+            Pair(true, context.getString(R.string.msg_unmounted_pstick))
+        } else {
+            AppLogger.e(TAG, "Independent unmount failed (gone=$gone, bound=$bound)")
+            Pair(false, context.getString(R.string.msg_pstick_unmount_failed, "gone=$gone bound=$bound"))
+        }
     }
 
     /**
@@ -555,7 +753,13 @@ object UsbGadgetController {
                     null
                 }
                 if (json != null) {
+                    // Always remove a lingering pstick gadget first (crashed sessions)
+                    findG1GadgetDir()?.let { teardownPstick(it) }
                     when (json.optString("mode")) {
+                        "independent" -> {
+                            AppLogger.i(TAG, "Unmount path: restore from independent-gadget snapshot")
+                            return restoreIndependentBackup(context, json)
+                        }
                         "oplus" -> {
                             AppLogger.i(TAG, "Unmount path: restore from OPlus snapshot")
                             return restoreOplusBackup(context, json)
@@ -601,6 +805,9 @@ object UsbGadgetController {
     private fun unmountViaOplusConfigfs(context: Context?): Pair<Boolean, String> {
         val gadget = findG1GadgetDir()
             ?: return Pair(false, context?.getString(R.string.err_gadget_not_found_short) ?: "OPlus: usb_gadget/g1 not found on any configfs mount")
+
+        // remove a possible leftover pstick gadget and free the UDC for g1
+        teardownPstick(gadget)
 
         val funcDir = "$gadget/functions/mass_storage.0"
         val savedCtrl = context?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -732,6 +939,19 @@ object UsbGadgetController {
             "LUN_RO=''",
             "LUN_CD=''",
             "LUN_PATH=''",
+            // dedicated pstick gadget: mounted == LUN set AND still holding the UDC
+            // (if the HAL somehow reclaimed the UDC the mount is dead and we
+            // must NOT report it as mounted)
+            "for psg in /config/usb_gadget/pstick \$CONFIGFS/usb_gadget/pstick /sys/kernel/config/usb_gadget/pstick; do",
+            "  if [ -d \"\$psg\" ] && [ -n \"\$(cat \"\$psg/UDC\" 2>/dev/null)\" ] && [ -n \"\$(cat \"\$psg/functions/mass_storage.0/lun.0/file\" 2>/dev/null)\" ]; then",
+            "    LUN_FILE=\$(cat \"\$psg/functions/mass_storage.0/lun.0/file\" 2>/dev/null)",
+            "    LUN_RO=\$(cat \"\$psg/functions/mass_storage.0/lun.0/ro\" 2>/dev/null)",
+            "    LUN_CD=\$(cat \"\$psg/functions/mass_storage.0/lun.0/cdrom\" 2>/dev/null)",
+            "    LUN_PATH=\"\$psg/functions/mass_storage.0/lun.0\"",
+            "    break",
+            "  fi",
+            "done",
+            "if [ -z \"\$LUN_FILE\" ]; then",
             "for lun in /config/usb_gadget/g1/functions/mass_storage.0/lun.0 \$CONFIGFS/usb_gadget/g1/functions/mass_storage.0/lun.0 \$CONFIGFS/usb_gadget/swy/functions/mass_storage.0/lun.0 /sys/kernel/config/usb_gadget/g1/functions/mass_storage.0/lun.0 /sys/class/android_usb/android0/f_mass_storage/lun0; do",
             "  if [ -f \"\$lun/file\" ]; then",
             "    CONTENT=\$(cat \"\$lun/file\" 2>/dev/null)",
@@ -744,6 +964,7 @@ object UsbGadgetController {
             "    fi",
             "  fi",
             "done",
+            "fi",
             "echo \"STATUS|\$LUN_FILE|\$LUN_RO|\$LUN_CD|\$LUN_PATH\""
         )
 

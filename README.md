@@ -58,15 +58,25 @@ JDK 17 required; Gradle 8.7 / AGP 8.5.0 / Kotlin 1.9.24 are fetched by the wrapp
 ColorOS mounts configfs at `/config` and pre-creates `usb_gadget/g1` with a
 `mass_storage.0` function instance, but its init never composes
 `sys.usb.config` with `mass_storage`, so the classic `setprop` toggle does
-nothing. PhoneStick instead:
+nothing. Worse, the ColorOS USB HAL owns `g1` and resets its composition back
+to MTP a few seconds after any external modification, which is why the host
+PC briefly loses the drive.
 
-1. Reads the active UDC (`sys.usb.controller`, e.g. `a600000.dwc3`) and
-   detaches `g1` from it.
-2. Fills `functions/mass_storage.0/lun.0` (`file`, `ro`, `cdrom`,
-   `removable`, `stall`).
-3. Symlinks `functions/mass_storage.0` into the active config
-   (`configs/b.1`), keeping ADB/MTP alive as a composite device.
-4. Re-attaches the UDC so the host re-enumerates and the drive appears.
+PhoneStick therefore creates a **dedicated gadget** the HAL does not know
+about (`usb_gadget/pstick`) and lets it take over the UDC:
+
+1. Resolves the active UDC (`sys.usb.controller`, e.g. `a600000.dwc3`) and
+   snapshots `g1`'s UDC binding.
+2. Creates `pstick` with its own VID/PID, strings, `configs/c.1` and a
+   `functions/mass_storage.0` LUN (`file`, `ro`, `cdrom`, `removable`,
+   `stall`).
+3. Detaches `g1` and binds the UDC to `pstick` (with retries, in case the
+   HAL races the rebind). `g1` itself is never modified.
+4. The host re-enumerates a pure mass-storage device; the HAL has no handle
+   to reset it. MTP/ADB over USB resume after unmount.
+
+If the kernel rejects new gadget directories (restricted configfs), the app
+falls back to composing mass storage directly on `g1` (legacy behavior).
 
 If your OPlus build denies configfs writes to root under enforcing SELinux,
 the app briefly drops to permissive for the LUN write only and restores
