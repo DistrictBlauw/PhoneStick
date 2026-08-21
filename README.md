@@ -75,6 +75,15 @@ about (`usb_gadget/pstick`) and lets it take over the UDC:
 4. The host re-enumerates a pure mass-storage device; the HAL has no handle
    to reset it. MTP/ADB over USB resume after unmount.
 
+On unmount the app does not merely rebind `g1`: while the dedicated gadget
+holds the UDC the ColorOS HAL strips `g1`'s composition (all function
+links), so a plain rebind would enumerate a device with no interfaces —
+"charging only" on the PC. The app therefore cycles `sys.usb.config`
+through `none` → the snapshotted original value, which runs init's own
+compose trigger: the function links are recreated, the UDC is rebound and
+`sys.usb.state` is republished so the framework USB state machine (MTP /
+tethering options) resynchronizes. A manual rebind remains as fallback.
+
 If the kernel rejects new gadget directories (restricted configfs), the app
 falls back to composing mass storage directly on `g1` (legacy behavior).
 

@@ -576,22 +576,44 @@ object UsbGadgetController {
         return ctrl
     }
 
-    /** Minimal snapshot for the independent strategy: only g1's UDC binding. */
+    /**
+     * Snapshot for the independent strategy: g1's UDC binding plus the
+     * sys.usb.config / sys.usb.state property pair. The properties matter on
+     * unmount: the ColorOS HAL leaves g1's composition EMPTY after we detach
+     * it for minutes, so merely rebinding the UDC would enumerate a device
+     * with no interfaces ("charging only" on the PC). Cycling sys.usb.config
+     * through none -> original makes init rebuild the composition.
+     */
     private fun storeIndependentBackup(context: Context, g1: String, udc: String) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (prefs.contains(KEY_GADGET_BACKUP)) {
             AppLogger.w(TAG, "A gadget backup already exists; keeping the older snapshot")
             return
         }
+        val propRes = Shell.cmd(
+            "echo \"USB_CONFIG|\$(getprop sys.usb.config)\"",
+            "echo \"USB_STATE|\$(getprop sys.usb.state)\""
+        ).exec()
+        var usbConfig = ""
+        var usbState = ""
+        for (raw in propRes.out) {
+            val line = raw.trim()
+            when {
+                line.startsWith("USB_CONFIG|") -> usbConfig = line.substring(11)
+                line.startsWith("USB_STATE|") -> usbState = line.substring(10)
+            }
+        }
         val json = JSONObject()
             .put("mode", "independent")
             .put("gadget", g1)
             .put("udc", udc)
+            .put("usbConfig", usbConfig)
+            .put("usbState", usbState)
             .put("links", JSONArray())
             .put("luns", JSONArray())
             .put("stalls", JSONArray())
         prefs.edit().putString(KEY_GADGET_BACKUP, json.toString()).apply()
-        AppLogger.i(TAG, "Independent backup stored (gadget=$g1, udc=$udc)")
+        AppLogger.i(TAG, "Independent backup stored (gadget=$g1, udc=$udc, usbConfig='$usbConfig', usbState='$usbState')")
     }
 
     /** Remove the pstick gadget entirely (idempotent). Returns true when gone. */
@@ -612,28 +634,69 @@ object UsbGadgetController {
         return gone
     }
 
-    /** Restore the independent-gadget snapshot: remove pstick, rebind g1. */
+    /**
+     * Build the sys.usb.config recompose cycle: setting 'none' runs init's
+     * teardown trigger (unbinds the gadget), restoring the original value
+     * runs the compose trigger which recreates every function symlink, binds
+     * the UDC and publishes sys.usb.state again. This is the ONLY reliable
+     * way to bring g1 back after the ColorOS HAL has stripped its
+     * composition - and it resyncs the framework USB state machine so MTP /
+     * tethering choices reappear on the phone.
+     */
+    private fun buildRecomposeLines(g1: String, usbConfig: String): List<String> {
+        val lines = ArrayList<String>()
+        lines.add("USBCFG='$usbConfig'")
+        lines.add("[ -z \"\$USBCFG\" ] && USBCFG=\$(getprop sys.usb.config)")
+        lines.add("if [ -n \"\$USBCFG\" ] && [ \"\$USBCFG\" != none ]; then")
+        lines.add("  setprop sys.usb.config none 2>/dev/null || true")
+        lines.add("  sleep 1")
+        lines.add("  setprop sys.usb.config \"\$USBCFG\" 2>/dev/null || true")
+        // init composes asynchronously: poll for the rebind (max ~10s)
+        lines.add("  I=0")
+        lines.add("  while [ \$I -lt 10 ]; do")
+        lines.add("    sleep 1")
+        lines.add("    [ -n \"\$(cat '$g1/UDC' 2>/dev/null)\" ] && break")
+        lines.add("    I=\$((I+1))")
+        lines.add("  done")
+        lines.add("fi")
+        return lines
+    }
+
+    /** Restore the independent-gadget snapshot: remove pstick, recompose g1. */
     private fun restoreIndependentBackup(context: Context, json: JSONObject): Pair<Boolean, String> {
         val g1 = json.optString("gadget")
         val udc = json.optString("udc")
+        val usbConfig = json.optString("usbConfig")
         if (g1.isBlank()) return Pair(false, context.getString(R.string.err_backup_no_gadget))
-        AppLogger.i(TAG, "Restoring independent-gadget backup: g1=$g1, udc=$udc")
+        AppLogger.i(TAG, "Restoring independent-gadget backup: g1=$g1, udc=$udc, usbConfig='$usbConfig'")
 
         val gone = teardownPstick(g1)
-        var bound = true
-        if (udc.isNotBlank()) {
-            val res = Shell.cmd(
-                "echo '$udc' > '$g1/UDC' 2>/dev/null || true",
-                "sleep 1",
-                "cat '$g1/UDC' 2>/dev/null"
-            ).exec()
-            logShell("g1 UDC rebind", res.code, res.out, res.err)
-            bound = res.out.firstOrNull()?.trim() == udc
+
+        // Detach g1 first so init's recomposition starts clean, then cycle
+        // sys.usb.config to force the compose trigger (rebuilds links + binds
+        // UDC + resyncs the framework). Manual rebind stays as a fallback.
+        val script = ArrayList<String>()
+        script.add("echo '' > '$g1/UDC' 2>/dev/null || true")
+        script.addAll(buildRecomposeLines(g1, usbConfig))
+        script.add("if [ -z \"\$(cat '$g1/UDC' 2>/dev/null)\" ]; then")
+        if (udc.isNotBlank()) script.add("  echo '${shellEscape(udc)}' > '$g1/UDC' 2>/dev/null || true")
+        script.add("  sleep 1")
+        script.add("fi")
+        script.add("sleep 1")
+        script.add("echo \"UDC_NOW|\$(cat '$g1/UDC' 2>/dev/null)\"")
+        script.add("echo \"USBCFG_NOW|\$(getprop sys.usb.config)\"")
+
+        val res = Shell.cmd(*script.toTypedArray()).exec()
+        logShell("g1 recompose (sys.usb.config cycle)", res.code, res.out, res.err)
+        val bound = if (udc.isNotBlank()) {
+            res.out.firstOrNull { it.startsWith("UDC_NOW|") }?.substring(8)?.trim() == udc
+        } else {
+            res.out.firstOrNull { it.startsWith("UDC_NOW|") }?.substring(8)?.isNotBlank() == true
         }
 
         return if (gone && bound) {
             clearBackupKeys(context)
-            AppLogger.i(TAG, "Independent unmount complete (g1 rebound to $udc)")
+            AppLogger.i(TAG, "Independent unmount complete (g1 recomposed, UDC=${res.out.firstOrNull { it.startsWith("UDC_NOW|") }?.substring(8)?.trim()})")
             Pair(true, context.getString(R.string.msg_unmounted_pstick))
         } else {
             AppLogger.e(TAG, "Independent unmount failed (gone=$gone, bound=$bound)")
@@ -813,7 +876,8 @@ object UsbGadgetController {
         val savedCtrl = context?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             ?.getString(KEY_USB_CONTROLLER, "") ?: ""
 
-        val script = arrayOf(
+        val script = ArrayList<String>()
+        script.addAll(listOf(
             // find the config that currently holds the mass_storage.0 link
             "CONF=''",
             "for c in '$gadget'/configs/*; do if [ -e \"\$c/mass_storage.0\" ]; then CONF=\"\$c\"; break; fi; done",
@@ -821,21 +885,30 @@ object UsbGadgetController {
             "[ -z \"\$CTRL\" ] && CTRL=\$(getprop sys.usb.controller)",
             "[ -z \"\$CTRL\" ] && CTRL=\$(getprop vendor.usb.controller)",
             "[ -z \"\$CTRL\" ] && CTRL=\$(ls /sys/class/udc 2>/dev/null | head -n1)",
-            // detach, clean, re-attach
+            // detach, clean
             "echo '' > '$gadget/UDC' 2>/dev/null || true",
             "sleep 1",
             "[ -n \"\$CONF\" ] && rm -f \"\$CONF/mass_storage.0\" 2>/dev/null || true",
             "echo '' > '$funcDir/lun.0/file' 2>/dev/null || true",
             "echo n > '$funcDir/lun.0/ro' 2>/dev/null || true",
-            "echo n > '$funcDir/lun.0/cdrom' 2>/dev/null || true",
-            "[ -n \"\$CTRL\" ] && echo \"\$CTRL\" > '$gadget/UDC' 2>/dev/null || true",
+            "echo n > '$funcDir/lun.0/cdrom' 2>/dev/null || true"
+        ))
+        // cycle sys.usb.config so init rebuilds the system composition and
+        // rebinds the UDC (guards against the HAL having stripped g1's links)
+        script.addAll(buildRecomposeLines(gadget, ""))
+        // manual rebind fallback if init did not compose
+        script.addAll(listOf(
+            "if [ -z \"\$(cat '$gadget/UDC' 2>/dev/null)\" ] && [ -n \"\$CTRL\" ]; then",
+            "  echo \"\$CTRL\" > '$gadget/UDC' 2>/dev/null || true",
+            "  sleep 1",
+            "fi",
             "sleep 1",
             "LUNVAL=\$(cat '$funcDir/lun.0/file' 2>/dev/null)",
             "UDCVAL=\$(cat '$gadget/UDC' 2>/dev/null)",
             "if [ -z \"\$LUNVAL\" ] && [ -n \"\$UDCVAL\" ]; then echo 'UNMOUNT_OK'; else echo \"UNMOUNT_FAIL|\$LUNVAL|\$UDCVAL\"; fi"
-        )
+        ))
 
-        val res = Shell.cmd(*script).exec()
+        val res = Shell.cmd(*script.toTypedArray()).exec()
         logShell("OPlus fallback unmount script", res.code, res.out, res.err)
         context?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
             ?.putBoolean(KEY_DIRECT_MODE, false)?.apply()

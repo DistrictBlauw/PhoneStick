@@ -62,6 +62,14 @@ ColorOS 把 configfs 挂载在 `/config`，并预创建了带 `mass_storage.0` �
 4. 主机重新枚举出一个纯 mass-storage 设备，HAL 没有任何句柄可以重置它。
    卸载后 USB 上的 MTP/ADB 自动恢复。
 
+卸载时应用不只是把 UDC 重新绑回 `g1`：在独立 gadget 持有 UDC 期间，
+ColorOS HAL 会把 `g1` 的组合剥空（移除全部功能链接），单纯重绑只会让
+PC 枚举到一个没有任何接口的设备——也就是"只能充电"。因此卸载时会将
+`sys.usb.config` 走一遍 `none` → 快照原值 的循环，触发 init 自己的组合
+trigger：功能链接被重建、UDC 重新绑定、`sys.usb.state` 重新发布，
+framework 的 USB 状态机（MTP / 网络共享选项）随之恢复同步。
+手动重绑仅作为兜底。
+
 如果内核拒绝创建新 gadget 目录（受限 configfs），应用会自动回退为直接在
 `g1` 上编排 mass storage 的旧方案。
 
